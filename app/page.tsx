@@ -10,6 +10,7 @@ import { PhraseGallery } from "@/components/phrase-gallery"
 import { getTodayPhrase, getWeekPhrases, phrases as allPhrases } from "@/lib/phrases"
 import { BookOpen, Sparkles, Search, X, Volume2 } from "lucide-react"
 
+// データ管理用の設定
 const StatsContext = createContext<any>(null)
 export const useStats = () => {
   const context = useContext(StatsContext)
@@ -29,21 +30,34 @@ function AllInOneProvider({ children }: { children: React.ReactNode }) {
   return <StatsContext.Provider value={{ ...stats, updateStats }}>{children}</StatsContext.Provider>
 }
 
+// 【根本解決】検索機能：余計な条件をすべて外した「原始的」な検索ロジック
 function LocalWordSearch() {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<any[]>([])
   const [hasSearched, setHasSearched] = useState(false)
 
+  // 検索ボタンを叩いた瞬間に、強制的にこの中身を走らせます
   const handleDoSearch = () => {
     const term = query.trim().toLowerCase()
-    if (!term) return
+    
+    // 入力がなければ何もしない（ここでリセット）
+    if (term === "") {
+      setResults([])
+      setHasSearched(false)
+      return
+    }
 
-    // 大文字小文字を区別せず、英語・日本語・意味から検索
-    const found = allPhrases.filter(p => 
-      p.english.toLowerCase().includes(term) || 
-      p.japanese.toLowerCase().includes(term) ||
-      (p.meaning && p.meaning.toLowerCase().includes(term))
-    )
+    // 辞書データ(allPhrases)から力技で抽出
+    const found = []
+    for (let i = 0; i < allPhrases.length; i++) {
+      const p = allPhrases[i]
+      if (
+        p.english.toLowerCase().includes(term) || 
+        p.japanese.includes(term)
+      ) {
+        found.push(p)
+      }
+    }
     
     setResults(found)
     setHasSearched(true)
@@ -57,41 +71,32 @@ function LocalWordSearch() {
           <input
             type="text"
             value={query}
-            onChange={(e) => {
-              setQuery(e.target.value)
-              if (!e.target.value) setHasSearched(false)
-            }}
+            onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleDoSearch() }}
-            placeholder="英単語を検索..."
+            placeholder="英単語を入力してね"
             className="h-12 w-full rounded-2xl border border-primary/20 bg-card pl-10 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
-          {query && (
-            <button 
-              onClick={() => { setQuery(""); setResults([]); setHasSearched(false); }} 
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
         </div>
+        {/* onClickを確実に発動させるため、型をbuttonに固定 */}
         <button 
           type="button"
-          onClick={handleDoSearch}
-          className="h-12 rounded-2xl bg-primary px-6 text-sm font-bold text-white shadow-md active:scale-95"
+          onClick={() => handleDoSearch()}
+          className="h-12 rounded-2xl bg-primary px-6 text-sm font-bold text-white shadow-md active:bg-primary/80"
         >
           検索
         </button>
       </div>
 
+      {/* 検索結果：hasSearchedがtrue（ボタンが押された後）のみ表示 */}
       {hasSearched && (
-        <div className="mt-2 p-4 rounded-2xl bg-primary/5 border border-primary/10 animate-in fade-in slide-in-from-top-1">
+        <div className="mt-2 p-4 rounded-2xl bg-primary/5 border border-primary/10">
           {results.length > 0 ? (
             <div className="flex flex-col gap-4">
-              <p className="text-xs font-bold text-primary">検索結果: {results.length}件</p>
+              <p className="text-[10px] font-bold text-primary">検索結果: {results.length}件</p>
               {results.map((phrase) => (
                 <div key={phrase.id} className="bg-card p-4 rounded-xl shadow-sm border border-primary/5">
                   <div className="flex justify-between items-start mb-1">
-                    <h3 className="text-lg font-bold text-foreground">{phrase.english}</h3>
+                    <h3 className="text-base font-bold text-foreground">{phrase.english}</h3>
                     <Volume2 className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <p className="text-sm text-muted-foreground">{phrase.japanese}</p>
@@ -99,7 +104,7 @@ function LocalWordSearch() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-4 text-sm text-muted-foreground">
+            <div className="text-center py-4 text-xs text-muted-foreground font-medium">
               「{query}」は見つかりませんでした
             </div>
           )}
@@ -110,7 +115,6 @@ function LocalWordSearch() {
 }
 
 export default function Page() {
-  // 元のロジックに戻してフレーズを正しく取得
   const todayPhrase = getTodayPhrase()
   const weekPhrases = getWeekPhrases()
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
@@ -122,21 +126,17 @@ export default function Page() {
       <div className="min-h-screen bg-background">
         <div className="mx-auto max-w-lg">
           <Header />
-          <main className="flex flex-col gap-6 pt-4">
+          <main className="flex flex-col gap-6 pt-4 pb-20">
             <LocalWordSearch />
-
+            
             <div className="flex flex-col items-center gap-2 py-4 text-center">
               <div className="animate-float">
                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 shadow-inner">
                   <Sparkles className="h-8 w-8 text-primary" />
                 </div>
               </div>
-              <h2 className="text-balance font-display text-xl font-extrabold text-foreground">
-                推しの言葉を、英語でも。
-              </h2>
-              <p className="text-sm text-muted-foreground px-8">
-                Vtuber推し活に使える英語フレーズを毎朝お届け
-              </p>
+              <h2 className="text-balance font-display text-xl font-extrabold text-foreground">推しの言葉を、英語でも。</h2>
+              <p className="text-sm text-muted-foreground px-8">毎朝7:00に最新フレーズをお届け</p>
             </div>
 
             <TodayCard phrase={todayPhrase} />
@@ -144,12 +144,9 @@ export default function Page() {
             <WeeklyList phrases={weekPhrases} todayId={todayPhrase.id} />
             
             <div className="flex flex-col items-center px-4">
-              <button 
-                onClick={() => setShowLibrary(!showLibrary)} 
-                className="w-full flex items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-card py-4 text-sm font-bold text-primary shadow-sm hover:bg-primary/5 transition-all"
-              >
+              <button onClick={() => setShowLibrary(!showLibrary)} className="w-full flex items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-card py-4 text-sm font-bold text-primary shadow-sm hover:bg-primary/5 transition-all">
                 <BookOpen className="h-4 w-4" />
-                {showLibrary ? "ライブラリを閉じる" : "フレーズライブラリを開く"}
+                {showLibrary ? "ライブラリを閉じる" : "ライブラリを開く"}
               </button>
             </div>
 
@@ -163,9 +160,7 @@ export default function Page() {
               </section>
             )}
             
-            <footer className="pb-8 pt-8 text-center text-xs text-muted-foreground">
-              OshiENGLISH - 推しと一緒に英語を学ぼう
-            </footer>
+            <footer className="pb-8 pt-8 text-center text-xs text-muted-foreground">OshiENGLISH - 推しと一緒に英語を学ぼう</footer>
           </main>
         </div>
       </div>

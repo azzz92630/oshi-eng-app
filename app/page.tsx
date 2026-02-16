@@ -105,7 +105,17 @@ function AIWordSearch() {
             <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-top-1">
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded-full">AI回答</span>
-                <Volume2 className="h-4 w-4 text-muted-foreground" />
+                <button 
+                  onClick={() => {
+                    const utterance = new SpeechSynthesisUtterance(result.word);
+                    utterance.lang = 'en-US'; // 英語で読み上げ
+                    window.speechSynthesis.speak(utterance);
+                  }}
+                  className="p-2 hover:bg-primary/10 rounded-full transition-colors"
+                  title="発音を聞く"
+                >
+                  <Volume2 className="h-4 w-4 text-primary" />
+              </button>
               </div>
               <div>
                 <div className="flex items-baseline gap-2">

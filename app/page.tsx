@@ -34,15 +34,19 @@ function LocalWordSearch() {
   const [results, setResults] = useState<any[]>([])
   const [hasSearched, setHasSearched] = useState(false)
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!query.trim()) return
-    const searchTerms = query.toLowerCase().trim()
+    e.stopPropagation()
+    
+    const term = query.trim().toLowerCase()
+    if (!term) return
+
     const found = phrases.filter(p => 
-      p.english.toLowerCase().includes(searchTerms) || 
-      p.japanese.includes(searchTerms) ||
-      p.meaning.includes(searchTerms)
+      p.english.toLowerCase().includes(term) || 
+      p.japanese.includes(term) ||
+      p.meaning.includes(term)
     )
+    
     setResults(found)
     setHasSearched(true)
   }
@@ -60,12 +64,21 @@ function LocalWordSearch() {
             className="h-12 w-full rounded-2xl border border-primary/20 bg-card pl-10 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-sm"
           />
           {query && (
-            <button type="button" onClick={() => { setQuery(""); setResults([]); setHasSearched(false); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <button 
+              type="button" 
+              onClick={() => { setQuery(""); setResults([]); setHasSearched(false); }} 
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
               <X className="h-4 w-4" />
             </button>
           )}
         </div>
-        <button type="submit" className="h-12 rounded-2xl bg-primary px-6 text-sm font-bold text-white shadow-md transition-all hover:opacity-90">検索</button>
+        <button 
+          type="submit" 
+          className="h-12 rounded-2xl bg-primary px-6 text-sm font-bold text-white shadow-md transition-all active:scale-95"
+        >
+          検索
+        </button>
       </form>
       {hasSearched && (
         <div className="flex flex-col gap-3 mt-2">
@@ -80,7 +93,9 @@ function LocalWordSearch() {
               <div className="text-xs bg-muted/30 p-2 rounded-lg text-muted-foreground">{phrase.meaning}</div>
             </div>
           )) : (
-            <div className="text-center py-8 text-muted-foreground text-sm bg-muted/20 rounded-2xl border border-dashed">該当する単語が見つかりませんでした</div>
+            <div className="text-center py-8 text-muted-foreground text-sm bg-muted/20 rounded-2xl border border-dashed">
+              該当する単語が見つかりませんでした
+            </div>
           )}
         </div>
       )}

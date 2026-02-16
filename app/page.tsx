@@ -11,31 +11,41 @@ import { getTodayPhrase, getWeekPhrases, phrases } from "@/lib/phrases"
 import { BookOpen, Sparkles } from "lucide-react"
 import { WordSearch } from "@/components/word-search"
 
-// --- StatsProviderをこのファイル内で定義（エラー回避の要） ---
-const StatsContext = createContext<any>(null);
+// --- Providerをファイル内に直接定義 ---
+const StatsContext = createContext<any>(null)
 
-function LocalStatsProvider({ children }: { children: React.ReactNode }) {
-  const [stats, setStats] = useState({ streak: 1, learnedCount: 0, level: 1 });
+function InlineStatsProvider({ children }: { children: React.ReactNode }) {
+  const [stats, setStats] = useState({ streak: 1, learnedCount: 0, level: 1 })
 
   useEffect(() => {
-    const saved = localStorage.getItem("oshienglish-stats");
-    if (saved) setStats(JSON.parse(saved));
-  }, []);
+    const saved = localStorage.getItem("oshienglish-stats")
+    if (saved) {
+      try {
+        setStats(JSON.parse(saved))
+      } catch (e) {
+        console.error("Failed to parse stats", e)
+      }
+    }
+  }, [])
 
   const updateStats = (newStats: any) => {
-    setStats(newStats);
-    localStorage.setItem("oshienglish-stats", JSON.stringify(newStats));
-  };
+    setStats(newStats)
+    localStorage.setItem("oshienglish-stats", JSON.stringify(newStats))
+  }
 
   return (
     <StatsContext.Provider value={{ ...stats, updateStats }}>
       {children}
     </StatsContext.Provider>
-  );
+  )
 }
 
-export const useStats = () => useContext(StatsContext);
-// ---------------------------------------------------------
+// 外部コンポーネントが使うためのフック
+export const useStats = () => {
+  const context = useContext(StatsContext)
+  if (!context) return { streak: 1, learnedCount: 0, level: 1, updateStats: () => {} }
+  return context
+}
 
 export default function Page() {
   const todayPhrase = getTodayPhrase()
@@ -48,7 +58,7 @@ export default function Page() {
     : phrases
 
   return (
-    <LocalStatsProvider>
+    <InlineStatsProvider>
       <div className="min-h-screen bg-background">
         <div className="mx-auto max-w-lg">
           <Header />
@@ -117,6 +127,6 @@ export default function Page() {
           </main>
         </div>
       </div>
-    </LocalStatsProvider>
+    </InlineStatsProvider>
   )
 }

@@ -7,25 +7,8 @@ import { WeeklyList } from "@/components/weekly-list"
 import { StreakCard } from "@/components/streak-card"
 import { CategoryPills } from "@/components/category-pills"
 import { PhraseGallery } from "@/components/phrase-gallery"
+import { getTodayPhrase, getWeekPhrases, phrases as allPhrases } from "@/lib/phrases"
 import { BookOpen, Sparkles, Search, X, Volume2 } from "lucide-react"
-
-// --- 辞書データをファイル内に直接定義（外部読み込みエラーを回避） ---
-const LOCAL_PHRASES = [
-  {
-    id: "pog",
-    english: "pog",
-    japanese: "すごい、最高、やった！",
-    meaning: "元々はゲーム実況で使われていた言葉で、素晴らしいプレイや驚くべきことが起きた時に使われます。",
-    category: "感情"
-  },
-  {
-    id: "best-collab-ever",
-    english: "Best collab ever!",
-    japanese: "最高のコラボだった！",
-    meaning: "推しと誰かのコラボ配信が終わった時、その内容を絶賛する際に使います。",
-    category: "感想"
-  }
-];
 
 const StatsContext = createContext<any>(null)
 export const useStats = () => {
@@ -55,10 +38,11 @@ function LocalWordSearch() {
     const term = query.trim().toLowerCase()
     if (!term) return
 
-    // ファイル内のLOCAL_PHRASESから検索
-    const found = LOCAL_PHRASES.filter(p => 
+    // 大文字小文字を区別せず、英語・日本語・意味から検索
+    const found = allPhrases.filter(p => 
       p.english.toLowerCase().includes(term) || 
-      p.japanese.includes(term)
+      p.japanese.toLowerCase().includes(term) ||
+      (p.meaning && p.meaning.toLowerCase().includes(term))
     )
     
     setResults(found)
@@ -73,11 +57,22 @@ function LocalWordSearch() {
           <input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              if (!e.target.value) setHasSearched(false)
+            }}
             onKeyDown={(e) => { if (e.key === 'Enter') handleDoSearch() }}
-            placeholder="英単語を検索（例: pog）"
+            placeholder="英単語を検索..."
             className="h-12 w-full rounded-2xl border border-primary/20 bg-card pl-10 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
+          {query && (
+            <button 
+              onClick={() => { setQuery(""); setResults([]); setHasSearched(false); }} 
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
         <button 
           type="button"
@@ -89,7 +84,7 @@ function LocalWordSearch() {
       </div>
 
       {hasSearched && (
-        <div className="mt-2 p-4 rounded-2xl bg-primary/5 border border-primary/10">
+        <div className="mt-2 p-4 rounded-2xl bg-primary/5 border border-primary/10 animate-in fade-in slide-in-from-top-1">
           {results.length > 0 ? (
             <div className="flex flex-col gap-4">
               <p className="text-xs font-bold text-primary">検索結果: {results.length}件</p>
@@ -115,11 +110,12 @@ function LocalWordSearch() {
 }
 
 export default function Page() {
-  // ライブラリ表示用には念のため元のデータも保持
-  const todayPhrase = LOCAL_PHRASES[0]
+  // 元のロジックに戻してフレーズを正しく取得
+  const todayPhrase = getTodayPhrase()
+  const weekPhrases = getWeekPhrases()
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [showLibrary, setShowLibrary] = useState(false)
-  const filteredPhrases = selectedCategory ? LOCAL_PHRASES.filter((p) => p.category === selectedCategory) : LOCAL_PHRASES
+  const filteredPhrases = selectedCategory ? allPhrases.filter((p) => p.category === selectedCategory) : allPhrases
 
   return (
     <AllInOneProvider>
@@ -128,16 +124,37 @@ export default function Page() {
           <Header />
           <main className="flex flex-col gap-6 pt-4">
             <LocalWordSearch />
+
+            <div className="flex flex-col items-center gap-2 py-4 text-center">
+              <div className="animate-float">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 shadow-inner">
+                  <Sparkles className="h-8 w-8 text-primary" />
+                </div>
+              </div>
+              <h2 className="text-balance font-display text-xl font-extrabold text-foreground">
+                推しの言葉を、英語でも。
+              </h2>
+              <p className="text-sm text-muted-foreground px-8">
+                Vtuber推し活に使える英語フレーズを毎朝お届け
+              </p>
+            </div>
+
             <TodayCard phrase={todayPhrase} />
             <StreakCard />
+            <WeeklyList phrases={weekPhrases} todayId={todayPhrase.id} />
+            
             <div className="flex flex-col items-center px-4">
-              <button onClick={() => setShowLibrary(!showLibrary)} className="w-full flex items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-card py-4 text-sm font-bold text-primary shadow-sm hover:bg-primary/5">
+              <button 
+                onClick={() => setShowLibrary(!showLibrary)} 
+                className="w-full flex items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-card py-4 text-sm font-bold text-primary shadow-sm hover:bg-primary/5 transition-all"
+              >
                 <BookOpen className="h-4 w-4" />
                 {showLibrary ? "ライブラリを閉じる" : "フレーズライブラリを開く"}
               </button>
             </div>
+
             {showLibrary && (
-              <section className="px-4">
+              <section className="px-4 animate-fade-in-up">
                 <div className="mb-4 pt-4">
                   <h3 className="mb-3 font-display text-lg font-bold text-foreground">フレーズライブラリ</h3>
                   <CategoryPills selected={selectedCategory} onSelect={setSelectedCategory} />
@@ -145,7 +162,10 @@ export default function Page() {
                 <PhraseGallery phrases={filteredPhrases} />
               </section>
             )}
-            <footer className="pb-8 pt-8 text-center text-xs text-muted-foreground">OshiENGLISH - 推しと一緒に英語を学ぼう</footer>
+            
+            <footer className="pb-8 pt-8 text-center text-xs text-muted-foreground">
+              OshiENGLISH - 推しと一緒に英語を学ぼう
+            </footer>
           </main>
         </div>
       </div>

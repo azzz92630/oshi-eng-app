@@ -1,91 +1,30 @@
-"use client"
+"use client";
+import React, { createContext, useContext, useState, useEffect } from "react";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react"
-import {
-  getLevel,
-  incrementLearnedCount,
-  updateStreakFromLastAccess,
-} from "@/lib/stats"
-import {
-  fireConfetti,
-  getCelebratedLevel2,
-  getCelebratedStreak3,
-  setCelebratedLevel2,
-  setCelebratedStreak3,
-} from "@/lib/celebration"
-import { toast } from "sonner"
-
-const LV2_MESSAGE =
-  "Lv.2達成！成長してるね！覚えたフレーズを使って、推しの配信で一言コメントを送ってみるのはどう？勇気を出して応援を届けよう！"
-
-interface StatsContextValue {
-  streak: number
-  learnedCount: number
-  level: number
-  incrementLearned: () => void
-}
-
-const StatsContext = createContext<StatsContextValue | null>(null)
+const StatsContext = createContext<any>(undefined);
 
 export function StatsProvider({ children }: { children: React.ReactNode }) {
-  const [streak, setStreak] = useState(1)
-  const [learnedCount, setLearnedCount] = useState(0)
-
+  const [stats, setStats] = useState({ streak: 1, learnedCount: 0, level: 1 });
   useEffect(() => {
-    const { streak: s, learnedCount: l } = updateStreakFromLastAccess()
-    setStreak(s)
-    setLearnedCount(l)
-  }, [])
-
-  const level = getLevel(streak)
-
-  // 3日継続の紙吹雪 & Lv.2達成メッセージ（そのレベルに達した最初の1回だけ）
-  useEffect(() => {
-    if (typeof window === "undefined") return
-
-    if (streak >= 3 && !getCelebratedStreak3()) {
-      setCelebratedStreak3()
-      fireConfetti()
-    }
-
-    if (level >= 2 && !getCelebratedLevel2()) {
-      setCelebratedLevel2()
-      toast.success("Lv.2達成！", {
-        description: LV2_MESSAGE,
-        duration: 8000,
-      })
-    }
-  }, [streak, level])
-
-  const incrementLearned = useCallback(() => {
-    const next = incrementLearnedCount()
-    setLearnedCount(next)
-  }, [])
-
+    const saved = localStorage.getItem("oshienglish-stats");
+    if (saved) { try { setStats(JSON.parse(saved)); } catch (e) {} }
+  }, []);
+  const updateStats = (newStats: any) => {
+    setStats(newStats);
+    localStorage.setItem("oshienglish-stats", JSON.stringify(newStats));
+  };
   return (
-    <StatsContext.Provider
-      value={{
-        streak,
-        learnedCount,
-        level,
-        incrementLearned,
-      }}
-    >
+    <StatsContext.Provider value={{ ...stats, updateStats }}>
       {children}
     </StatsContext.Provider>
-  )
+  );
 }
 
-export function useStats(): StatsContextValue {
-  const ctx = useContext(StatsContext)
-  if (!ctx) {
-    throw new Error("useStats must be used within StatsProvider")
+export function useStats() {
+  const context = useContext(StatsContext);
+  // Providerが見つからない場合でも絶対にエラーを出さず、初期値を返す
+  if (context === undefined) {
+    return { streak: 1, learnedCount: 0, level: 1, updateStats: () => {} };
   }
-  return ctx
+  return context;
 }

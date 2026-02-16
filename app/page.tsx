@@ -10,7 +10,7 @@ import { PhraseGallery } from "@/components/phrase-gallery"
 import { getTodayPhrase, getWeekPhrases, phrases } from "@/lib/phrases"
 import { BookOpen, Sparkles, Search, X, Volume2 } from "lucide-react"
 
-// 1. データ管理（Stats）の定義
+StatsContextの定義
 const StatsContext = createContext<any>(null)
 export const useStats = () => {
 const context = useContext(StatsContext)
@@ -30,7 +30,7 @@ localStorage.setItem("oshienglish-stats", JSON.stringify(newStats))
 return <StatsContext.Provider value={{ ...stats, updateStats }}>{children}</StatsContext.Provider>
 }
 
-// 2. 検索コンポーネント（このファイル内で定義して確実に動かす）
+検索コンポーネント（このファイル内で完結させる）
 function LocalWordSearch() {
 const [query, setQuery] = useState("")
 const [results, setResults] = useState<any[]>([])
@@ -90,7 +90,7 @@ className="h-12 w-full rounded-2xl border border-primary/20 bg-card pl-10 pr-10 
 )
 }
 
-// 3. メインページ
+メインページ
 export default function Page() {
 const todayPhrase = getTodayPhrase()
 const weekPhrases = getWeekPhrases()

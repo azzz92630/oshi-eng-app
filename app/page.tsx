@@ -39,21 +39,28 @@ function LocalWordSearch() {
   // 検索を実行する関数
   const executeSearch = () => {
     const term = query.trim().toLowerCase()
-    if (!term) return
+    if (!term) {
+      setResults([])
+      setHasSearched(false)
+      return
+    }
 
-    const found = phrases.filter(p => 
-      p.english.toLowerCase().includes(term) || 
-      p.japanese.includes(term) ||
-      p.meaning.includes(term)
-    )
-    
-    setResults(found)
-    setHasSearched(true)
+    // 安全のため、データが存在するかチェックしながら検索
+    try {
+      const found = phrases.filter(p => 
+        (p.english && p.english.toLowerCase().includes(term)) || 
+        (p.japanese && p.japanese.includes(term)) ||
+        (p.meaning && p.meaning.includes(term))
+      )
+      setResults(found)
+      setHasSearched(true)
+    } catch (err) {
+      console.error("Search Error:", err)
+    }
   }
 
   return (
     <div className="w-full flex flex-col gap-4 px-4">
-      {/* 検索バー */}
       <div className="relative flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -75,14 +82,16 @@ function LocalWordSearch() {
           )}
         </div>
         <button 
-          onClick={executeSearch}
+          onClick={(e) => {
+            e.preventDefault();
+            executeSearch();
+          }}
           className="h-12 rounded-2xl bg-primary px-6 text-sm font-bold text-white shadow-md active:scale-95 transition-transform"
         >
           検索
         </button>
       </div>
 
-      {/* 検索結果のリスト */}
       {hasSearched && (
         <div className="flex flex-col gap-3 mt-2">
           {results.length > 0 ? (
@@ -94,12 +103,14 @@ function LocalWordSearch() {
                 </div>
                 <h3 className="text-lg font-bold text-foreground mb-1">{phrase.english}</h3>
                 <p className="text-sm text-muted-foreground mb-2">{phrase.japanese}</p>
-                <div className="text-xs bg-muted/30 p-2 rounded-lg text-muted-foreground">{phrase.meaning}</div>
+                <div className="text-xs bg-muted/30 p-2 rounded-lg text-muted-foreground">
+                  {phrase.meaning}
+                </div>
               </div>
             ))
           ) : (
             <div className="text-center py-8 text-muted-foreground text-sm bg-muted/20 rounded-2xl border border-dashed">
-              見つかりませんでした
+              「{query}」は見つかりませんでした
             </div>
           )}
         </div>

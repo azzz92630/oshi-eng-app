@@ -34,30 +34,32 @@ export async function POST(request: NextRequest) {
     const searchWord = word.trim().toLowerCase()
 
     // Gemini API で単語情報を生成
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
 
-    const prompt = `以下の英単語について、以下の情報を提供してください：
-- 意味（日本語で簡潔に）
-- 発音（読み方、カタカナ表記）
-- Vtuberの配信を想定した例文（英語）
-- Vtuberの配信を想定した例文（日本語訳）
-- 日常会話での例文（英語）
-- 日常会話での例文（日本語訳）
+    // --- 修正ポイント：AIへの指示（プロンプト）をより厳格にしました ---
+    const prompt = `以下の英単語について、詳細な情報を提供してください。
 
 単語: ${searchWord}
 
-以下の JSON 形式で返してください：
+【出力ルール】
+1. 発音 (pronunciation): 
+   - ネイティブの発音に近いカタカナ表記にしてください。
+   - LMAO, LOL, ASAP のような「略語（アルファベットの羅列）」の場合は、ローマ字読み（ラマオ等）を絶対に避け、一文字ずつの読み（例: エルエムエーオー）を記載してください。
+2. 意味 (meaning): 日本語で簡潔かつ正確に。
+3. Vtuber例文: その単語を使いそうな配信シチュエーションで。
+4. 日常例文: 一般的な会話での使い方。
+
+以下の JSON 形式でのみ返してください。説明文は一切不要です：
 
 {
-  "meaning": "意味（日本語）",
-  "pronunciation": "発音（カタカナ）",
-  "vtuberExample": "Vtuber配信での例文（英語）",
-  "vtuberExampleJa": "Vtuber配信での例文（日本語訳）",
-  "dailyExample": "日常会話での例文（英語）",
-  "dailyExampleJa": "日常会話での例文（日本語訳）"
+  "meaning": "意味",
+  "pronunciation": "正確な発音（カタカナ）",
+  "vtuberExample": "英語例文",
+  "vtuberExampleJa": "例文の日本語訳",
+  "dailyExample": "英語例文",
+  "dailyExampleJa": "例文の日本語訳"
 }
-
-JSON のみを返してください。説明文は不要です。`
+`
 
     const result = await model.generateContent(prompt)
     const response = await result.response
@@ -73,7 +75,6 @@ JSON のみを返してください。説明文は不要です。`
       dailyExampleJa: parsed.dailyExampleJa || "",
     }
 
-    // 必須フィールドのチェック
     if (
       !wordInfo.meaning ||
       !wordInfo.vtuberExample ||
@@ -103,21 +104,15 @@ JSON のみを返してください。説明文は不要です。`
 
 function safeParseModelJson(text: string): any {
   const trimmed = text.trim()
-
-  // 1) fenced code block (```json ... ``` or ``` ... ```)
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)
   if (fenced?.[1]) {
     return JSON.parse(fenced[1].trim())
   }
-
-  // 2) first JSON object in the text
   const firstObjStart = trimmed.indexOf("{")
   const lastObjEnd = trimmed.lastIndexOf("}")
   if (firstObjStart !== -1 && lastObjEnd !== -1 && lastObjEnd > firstObjStart) {
     const candidate = trimmed.slice(firstObjStart, lastObjEnd + 1)
     return JSON.parse(candidate)
   }
-
-  // 3) as-is
   return JSON.parse(trimmed)
 }

@@ -1,9 +1,11 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Volume2 } from "lucide-react"
+import { Volume2, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { speakEnglish } from "@/lib/speech"
+import { toast } from "sonner"
 
 interface WordInfo {
   word: string
@@ -16,15 +18,41 @@ interface WordInfo {
 }
 
 export function WordSearchResult({ wordInfo }: { wordInfo: WordInfo }) {
+  const [favorited, setFavorited] = useState(false)
+
   function handleSpeak(text: string) {
     speakEnglish(text, { rate: 0.85 })
   }
 
+  function handleFavoriteClick() {
+    setFavorited(true)
+    toast.info("単語帳機能は近日公開予定です！お楽しみに！")
+  }
+
   return (
-    <Card className="border-2 border-primary/20 bg-card shadow-lg shadow-primary/5">
-      <CardHeader>
+    <Card className="relative border-2 border-primary/20 bg-card shadow-lg shadow-primary/5">
+      {/* お気に入り用スター（右上絶対配置） */}
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={handleFavoriteClick}
+        className="absolute right-2 top-2 z-10 h-8 w-8 rounded-full p-0 transition-colors hover:bg-primary/10"
+        aria-label="お気に入りに登録"
+      >
+        <Star
+          className={`h-5 w-5 transition-all duration-200 ${
+            favorited
+              ? "fill-yellow-400 text-yellow-400 scale-110"
+              : "text-muted-foreground hover:text-yellow-500/80"
+          }`}
+          fill={favorited ? "currentColor" : "none"}
+        />
+      </Button>
+
+      <CardHeader className="pr-10">
         <div className="flex items-start justify-between">
-          <div>
+          <div className="min-w-0 flex-1">
             <CardTitle className="text-xl font-extrabold text-foreground">
               {wordInfo.word}
             </CardTitle>

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Search, Loader2 } from "lucide-react"
 import { WordSearchResult } from "./word-search-result"
+import { useStats } from "@/components/stats-provider"
 
 interface WordInfo {
   word: string
@@ -18,6 +19,7 @@ interface WordInfo {
 }
 
 export function WordSearch() {
+  const { incrementLearned } = useStats()
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<WordInfo | null>(null)
@@ -49,6 +51,7 @@ export function WordSearch() {
       }
 
       setResult(data)
+      incrementLearned()
     } catch (err) {
       setError(err instanceof Error ? err.message : "予期しないエラーが発生しました")
     } finally {

@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const searchWord = word.trim().toLowerCase()
 
     // Gemini API で単語情報を生成
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
     // --- 修正ポイント：AIへの指示（プロンプト）をより厳格にしました ---
     const prompt = `以下の英単語について、詳細な情報を提供してください。

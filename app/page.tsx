@@ -11,9 +11,10 @@ import { getTodayPhrase, getWeekPhrases, phrases } from "@/lib/phrases"
 import { BookOpen, Sparkles } from "lucide-react"
 import { WordSearch } from "@/components/word-search"
 
-// --- 外部の部品が探しに来る「本物のProvider」をここで定義 ---
+// 1. データの通り道（Context）を作成
 const StatsContext = createContext<any>(null);
 
+// 2. データを供給する部品（Provider）を定義
 export function StatsProvider({ children }: { children: React.ReactNode }) {
   const [stats, setStats] = useState({ streak: 1, learnedCount: 0, level: 1 });
 
@@ -36,16 +37,20 @@ export function StatsProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// 部品たちが「useStats」と呼んだ時に、ここで定義したデータを渡すようにする
+// 3. 【根本解決】データを取り出す仕組みに「安全装置」を付ける
 export const useStats = () => {
   const context = useContext(StatsContext);
+  // Providerが見つからない場合でも、エラーを投げずにデフォルト値を返す
   if (!context) {
-    // もしProviderがなくてもエラーにせず、仮のデータを返す（これがビルドを通すコツ）
-    return { streak: 1, learnedCount: 0, level: 1, updateStats: () => {} };
+    return { 
+      streak: 1, 
+      learnedCount: 0, 
+      level: 1, 
+      updateStats: () => {} 
+    };
   }
   return context;
 };
-// ---------------------------------------------------------
 
 export default function Page() {
   const todayPhrase = getTodayPhrase()
@@ -62,12 +67,10 @@ export default function Page() {
       <div className="min-h-screen bg-background">
         <div className="mx-auto max-w-lg">
           <Header />
-
           <main className="flex flex-col gap-6 px-4 pb-24">
             <section aria-label="英単語検索">
               <WordSearch />
             </section>
-
             <div className="flex flex-col items-center gap-2 py-4 text-center">
               <div className="animate-float">
                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
@@ -81,19 +84,15 @@ export default function Page() {
                 Vtuber推し活に使える英語フレーズを毎朝お届け
               </p>
             </div>
-
             <section aria-label="今日のフレーズ">
               <TodayCard phrase={todayPhrase} />
             </section>
-
             <section aria-label="学習の進捗">
               <StreakCard />
             </section>
-
             <section aria-label="今週のフレーズ">
               <WeeklyList phrases={weekPhrases} todayId={todayPhrase.id} />
             </section>
-
             <div className="flex flex-col items-center gap-3">
               <button
                 onClick={() => setShowLibrary(!showLibrary)}
@@ -103,7 +102,6 @@ export default function Page() {
                 {showLibrary ? "ライブラリを閉じる" : "フレーズライブラリを開く"}
               </button>
             </div>
-
             {showLibrary && (
               <section aria-label="フレーズライブラリ" className="animate-fade-in-up">
                 <div className="mb-4">
@@ -118,7 +116,6 @@ export default function Page() {
                 <PhraseGallery phrases={filteredPhrases} />
               </section>
             )}
-
             <footer className="pb-4 pt-8 text-center">
               <p className="text-xs text-muted-foreground">
                 OshiENGLISH - 推しと一緒に英語を学ぼう

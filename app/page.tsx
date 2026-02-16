@@ -7,10 +7,12 @@ import { WeeklyList } from "@/components/weekly-list"
 import { StreakCard } from "@/components/streak-card"
 import { CategoryPills } from "@/components/category-pills"
 import { PhraseGallery } from "@/components/phrase-gallery"
-import { getTodayPhrase, getWeekPhrases, phrases } from "@/lib/phrases"
+import { getTodayPhrase, getWeekPhrases, phrases as allPhrases } from "@/lib/phrases"
 import { BookOpen, Sparkles, Search, X, Volume2 } from "lucide-react"
 
-// データ管理用の設定
+// --- データの安全な確保 ---
+const LOCAL_DICTIONARY = allPhrases;
+
 const StatsContext = createContext<any>(null)
 export const useStats = () => {
   const context = useContext(StatsContext)
@@ -30,33 +32,24 @@ function AllInOneProvider({ children }: { children: React.ReactNode }) {
   return <StatsContext.Provider value={{ ...stats, updateStats }}>{children}</StatsContext.Provider>
 }
 
-// 検索機能
 function LocalWordSearch() {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<any[]>([])
   const [hasSearched, setHasSearched] = useState(false)
 
-  // 検索を実行する関数
   const executeSearch = () => {
     const term = query.trim().toLowerCase()
-    if (!term) {
-      setResults([])
-      setHasSearched(false)
-      return
-    }
+    if (!term) return
 
-    // 安全のため、データが存在するかチェックしながら検索
-    try {
-      const found = phrases.filter(p => 
-        (p.english && p.english.toLowerCase().includes(term)) || 
-        (p.japanese && p.japanese.includes(term)) ||
-        (p.meaning && p.meaning.includes(term))
-      )
-      setResults(found)
-      setHasSearched(true)
-    } catch (err) {
-      console.error("Search Error:", err)
-    }
+    // 直接インポートした allPhrases (LOCAL_DICTIONARY) から確実に探す
+    const found = LOCAL_DICTIONARY.filter(p => 
+      p.english.toLowerCase().includes(term) || 
+      p.japanese.includes(term) ||
+      (p.meaning && p.meaning.includes(term))
+    )
+    
+    setResults(found)
+    setHasSearched(true)
   }
 
   return (
@@ -82,10 +75,7 @@ function LocalWordSearch() {
           )}
         </div>
         <button 
-          onClick={(e) => {
-            e.preventDefault();
-            executeSearch();
-          }}
+          onClick={executeSearch}
           className="h-12 rounded-2xl bg-primary px-6 text-sm font-bold text-white shadow-md active:scale-95 transition-transform"
         >
           検索
@@ -124,7 +114,7 @@ export default function Page() {
   const weekPhrases = getWeekPhrases()
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [showLibrary, setShowLibrary] = useState(false)
-  const filteredPhrases = selectedCategory ? phrases.filter((p) => p.category === selectedCategory) : phrases
+  const filteredPhrases = selectedCategory ? allPhrases.filter((p) => p.category === selectedCategory) : allPhrases
 
   return (
     <AllInOneProvider>

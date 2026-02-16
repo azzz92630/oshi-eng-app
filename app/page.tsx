@@ -10,9 +10,6 @@ import { PhraseGallery } from "@/components/phrase-gallery"
 import { getTodayPhrase, getWeekPhrases, phrases as allPhrases } from "@/lib/phrases"
 import { BookOpen, Sparkles, Search, X, Volume2 } from "lucide-react"
 
-// --- データの安全な確保 ---
-const LOCAL_DICTIONARY = allPhrases;
-
 const StatsContext = createContext<any>(null)
 export const useStats = () => {
   const context = useContext(StatsContext)
@@ -39,10 +36,15 @@ function LocalWordSearch() {
 
   const executeSearch = () => {
     const term = query.trim().toLowerCase()
-    if (!term) return
+    // 入力が空なら検索結果をリセットして終了
+    if (!term) {
+      setResults([])
+      setHasSearched(false)
+      return
+    }
 
-    // 直接インポートした allPhrases (LOCAL_DICTIONARY) から確実に探す
-    const found = LOCAL_DICTIONARY.filter(p => 
+    // 辞書データから検索を実行
+    const found = allPhrases.filter(p => 
       p.english.toLowerCase().includes(term) || 
       p.japanese.includes(term) ||
       (p.meaning && p.meaning.includes(term))
@@ -60,7 +62,13 @@ function LocalWordSearch() {
           <input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              if (!e.target.value) {
+                setResults([])
+                setHasSearched(false)
+              }
+            }}
             onKeyDown={(e) => { if (e.key === 'Enter') executeSearch() }}
             placeholder="英単語を検索..."
             className="h-12 w-full rounded-2xl border border-primary/20 bg-card pl-10 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -82,6 +90,7 @@ function LocalWordSearch() {
         </button>
       </div>
 
+      {/* 検索結果の表示エリア：ボタンを押して結果があった場合のみ表示 */}
       {hasSearched && (
         <div className="flex flex-col gap-3 mt-2">
           {results.length > 0 ? (

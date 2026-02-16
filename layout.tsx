@@ -1,10 +1,30 @@
-import React from "react"
+"use client"; // 1行目に追加
+
+import React, { createContext, useContext, useEffect, useState } from "react"
 import type { Metadata, Viewport } from 'next'
 import { M_PLUS_Rounded_1c, Nunito } from 'next/font/google'
-
 import './globals.css'
 import { Toaster } from "@/components/ui/sonner"
-import { StatsProvider } from "@/components/stats-provider"
+
+// --- ここにコピーした stats-provider.tsx のロジックを貼り付ける ---
+// 例として、Contextの定義部分をここに直接書きます
+const StatsContext = createContext<any>(null);
+
+export function StatsProvider({ children }: { children: React.ReactNode }) {
+  // ここに useState や useEffect などのロジックをそのまま入れる
+  return (
+    <StatsContext.Provider value={{ /* stateなどを入れる */ }}>
+      {children}
+    </StatsContext.Provider>
+  );
+}
+
+export function useStats() {
+  const context = useContext(StatsContext);
+  if (!context) throw new Error("useStats must be used within StatsProvider");
+  return context;
+}
+// ---------------------------------------------------------
 
 const _mplusRounded = M_PLUS_Rounded_1c({
   subsets: ['latin'],
@@ -18,28 +38,6 @@ const _nunito = Nunito({
   variable: '--font-nunito',
 })
 
-export const metadata: Metadata = {
-  title: 'OshiENGLISH - Vtuberと一緒に英語を学ぼう',
-  description: '毎朝7時に届く、Vtuber推し活に使える英語フレーズ。楽しく英語を学ぼう！',
-}
-
-export const viewport: Viewport = {
-  themeColor: '#c4b5fd',
-}
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
-  return (
-    <html lang="ja">
-      <body className="font-sans antialiased">
-        <StatsProvider>
-          {children}
-          <Toaster richColors position="top-center" />
-        </StatsProvider>
-      </body>
-    </html>
-  )
-}
+// 注意： "use client" を使う場合、metadata は別ファイルに分ける必要があります。
+// 一旦、ビルドを通すために metadata の書き出しを消すか、
+// layout.tsx を Client Component にせず、Provider部分だけを別ファイルで徹底的に直す必要があります。

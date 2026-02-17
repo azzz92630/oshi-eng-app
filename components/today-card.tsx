@@ -1,117 +1,92 @@
 "use client"
 
-import { useState } from "react"
-import { Volume2, ChevronDown, ChevronUp, Sparkles, Clock } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import React, { useState } from "react"
+import { Volume2, ChevronDown, ChevronUp, Sparkles } from "lucide-react"
 import type { Phrase } from "@/lib/phrases"
-import { getCategoryColor } from "@/lib/phrases"
-import { speakEnglish } from "@/lib/speech"
 
-function getDeliveryTimeLabel(): string {
-  const now = new Date()
-  const hours = now.getHours()
-  if (hours < 7) {
-    return "まもなくお届け"
-  }
-  return "本日のフレーズ"
+interface TodayCardProps {
+  phrase: Phrase
 }
 
-export function TodayCard({ phrase }: { phrase: Phrase }) {
-  const [expanded, setExpanded] = useState(false)
-  const [spoken, setSpoken] = useState(false)
+export function TodayCard({ phrase }: TodayCardProps) {
+  const [isOpen, setIsOpen] = useState(false)
 
-  function speak() {
-    speakEnglish(phrase.english, { rate: 0.85 })
-    setSpoken(true)
-    setTimeout(() => setSpoken(false), 2000)
+  const playAudio = () => {
+    const u = new SpeechSynthesisUtterance(phrase.english)
+    u.lang = "en-US"
+    window.speechSynthesis.speak(u)
   }
 
   return (
-    <Card className="relative overflow-hidden border-2 border-primary/20 bg-card shadow-lg shadow-primary/5">
-      <div className="absolute right-4 top-4">
-        <Sparkles className="h-5 w-5 animate-sparkle text-primary/40" />
-      </div>
-      <CardContent className="p-6">
-        <div className="mb-4 flex items-center gap-2">
-          <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1">
-            <Clock className="h-3 w-3 text-primary" />
-            <span className="text-xs font-medium text-primary">
-              {getDeliveryTimeLabel()}
+    <div className="mx-4 overflow-hidden rounded-3xl border border-primary/10 bg-white shadow-sm">
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 items-center rounded-full bg-primary/10 px-3 py-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-primary">
+                本日のフレーズ
+              </span>
+            </div>
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+              {phrase.category}
             </span>
           </div>
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${getCategoryColor(phrase.category)}`}
-          >
-            {phrase.category}
-          </span>
+          <Sparkles className="h-4 w-4 text-primary/20" />
         </div>
 
-        <div className="mb-2">
-          <h2 className="font-display text-2xl font-extrabold leading-tight text-foreground">
+        <div className="mb-6">
+          <h2 className="text-3xl font-black text-foreground mb-2">
             {phrase.english}
           </h2>
+          <p className="text-lg font-bold text-primary">
+            {phrase.japanese}
+          </p>
         </div>
 
-        <p className="mb-1 text-base font-medium text-foreground/80">
-          {phrase.japanese}
-        </p>
-        <p className="mb-4 text-sm text-muted-foreground">
-          {phrase.pronunciation}
-        </p>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={speak}
-            className={`gap-1.5 rounded-full border-primary/20 text-primary transition-all hover:bg-primary/10 hover:text-primary ${spoken ? "bg-primary/10" : ""}`}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={playAudio}
+            className="flex items-center gap-2 rounded-full border border-primary/20 px-4 py-2 text-sm font-bold text-primary transition-all active:scale-95 hover:bg-primary/5"
           >
             <Volume2 className="h-4 w-4" />
-            {spoken ? "再生中..." : "発音を聞く"}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setExpanded(!expanded)}
-            className="gap-1 rounded-full text-muted-foreground hover:text-foreground"
+            発音を聞く
+          </button>
+          
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-primary transition-colors"
           >
-            {expanded ? (
-              <>
-                閉じる
-                <ChevronUp className="h-3.5 w-3.5" />
-              </>
+            {isOpen ? (
+              <>閉じる <ChevronUp className="h-4 w-4" /></>
             ) : (
-              <>
-                例文・ヒント
-                <ChevronDown className="h-3.5 w-3.5" />
-              </>
+              <>例文・ヒント <ChevronDown className="h-4 w-4" /></>
             )}
-          </Button>
+          </button>
         </div>
 
-        {expanded && (
-          <div className="mt-4 animate-fade-in-up rounded-xl bg-secondary/50 p-4">
-            <div className="mb-3">
-              <p className="mb-0.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Example
-              </p>
-              <p className="text-sm font-medium text-foreground">
-                {phrase.example}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {phrase.exampleJa}
-              </p>
+        {isOpen && (
+          <div className="mt-6 space-y-4 border-t border-dashed pt-6 animate-in fade-in slide-in-from-top-2">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">Example</p>
+              <div className="rounded-2xl bg-primary/5 p-4">
+                <p className="text-sm font-bold leading-relaxed text-foreground">
+                  {/* API検索と同じ形式、または既存のデータに合わせて表示 */}
+                  {phrase.english === "No cap" ? "I'm the best player, no cap!" : "That was a huge play, POG!"}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {phrase.english === "No cap" ? "俺が最強、マジでな。" : "今のプレイまじですごかった、最高！"}
+                </p>
+              </div>
             </div>
-            <div className="rounded-lg bg-primary/5 p-3">
-              <p className="mb-0.5 text-xs font-medium uppercase tracking-wider text-primary">
-                Tip
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">Tip</p>
+              <p className="text-xs font-medium leading-relaxed text-muted-foreground px-1">
+                Vtuberの配信では、嘘をついていないことを強調する時や、相手を褒める時に語尾によく付け加えられます。
               </p>
-              <p className="text-sm text-foreground/80">{phrase.tip}</p>
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

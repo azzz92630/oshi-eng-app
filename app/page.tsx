@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from "react"
 import { Header } from "@/components/header"
 import { TodayCard } from "@/components/today-card"
-import { WeeklyList } from "@/components/weekly-list"
-import { getTodayPhrase, getWeekPhrases, phrases as allPhrases } from "@/lib/phrases"
+import { supabase } from "@/lib/supabase"
+import type { Phrase } from "@/lib/phrases"
 import { BookOpen, Sparkles, Search, Volume2, Loader2, CheckCircle2, Flame, Trophy, PartyPopper, History, Sun, Cloud, Moon } from "lucide-react"
 
 export default function Page() {
@@ -17,12 +17,15 @@ export default function Page() {
   const [showLearnedList, setShowLearnedList] = useState(false)
   const [message, setMessage] = useState("")
   const [timeContext, setTimeContext] = useState({ theme: "bg-background", icon: <Sun /> })
+  
+  // Supabaseから取得するフレーズ用
+  const [todayPhrase, setTodayPhrase] = useState<Phrase | null>(null)
+  const [allDbPhrases, setAllDbPhrases] = useState<Phrase[]>([])
 
-  const todayPhrase = getTodayPhrase()
-  const weekPhrases = getWeekPhrases()
   const level = Math.floor((stats.learnedCount || 0) / 5) + 1
 
   useEffect(() => {
+    // 1. ローカルデータの読み込み
     const saved = localStorage.getItem("oshienglish-stats")
     if (saved) {
       try {
@@ -39,6 +42,33 @@ export default function Page() {
       }
     }
 
+    // 2. Supabaseからフレーズを取得
+    const fetchPhrases = async () => {
+      // 全データを取得（作成日順）
+      const { data, error } = await supabase
+        .from('phrases')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (!error && data) {
+        // キャメルケースに変換してセット
+        const formatted = data.map(p => ({
+          id: p.id,
+          english: p.english,
+          japanese: p.japanese,
+          category: p.category,
+          exampleEn: p.example_en,
+          exampleJa: p.example_ja,
+          tip: p.tip
+        })) as Phrase[]
+        
+        setAllDbPhrases(formatted)
+        setTodayPhrase(formatted[0]) // 一番新しいものを「本日」とする
+      }
+    }
+    fetchPhrases()
+
+    // 3. 時間に応じた背景設定
     const updateTheme = () => {
       const hour = new Date().getHours()
       if (hour >= 5 && hour < 11) {
@@ -90,11 +120,11 @@ export default function Page() {
     }
   }
 
-  const learnedPhrasesFromLib = allPhrases.filter(p => stats.learnedIds.includes(p.id))
-  // 古い数字IDを除外するフィルタリングを追加
+  // 学習済みアイテムのフィルタリング
+  const learnedPhrasesFromDb = allDbPhrases.filter(p => stats.learnedIds.includes(p.id))
   const otherLearnedItems = stats.learnedIds.filter(id => {
     const isOldNumericId = /^\d+$/.test(id);
-    return !allPhrases.find(p => p.id === id) && !isOldNumericId;
+    return !allDbPhrases.find(p => p.id === id) && !isOldNumericId;
   })
 
   return (
@@ -115,6 +145,7 @@ export default function Page() {
             </div>
           )}
 
+          {/* 検索セクション */}
           <div className="flex flex-col gap-4">
             <div className="relative flex items-center gap-2">
               <div className="relative flex-1">
@@ -191,20 +222,29 @@ export default function Page() {
           </div>
 
           <div className="flex flex-col gap-3">
-            <TodayCard phrase={todayPhrase} />
-            <button 
-              onClick={() => toggleLearn(todayPhrase.id)}
-              className={`mx-4 flex h-14 items-center justify-center gap-2 rounded-2xl border-2 font-black transition-all active:scale-95 shadow-sm ${stats.learnedIds.includes(todayPhrase.id) ? "bg-green-50 border-green-200 text-green-600" : "bg-white border-primary/20 text-primary"}`}
-            >
-              <CheckCircle2 className="h-5 w-5" />
-              {stats.learnedIds.includes(todayPhrase.id) ? "学習済み（タップで解除）" : "本日のフレーズを覚えた！"}
-            </button>
+            {todayPhrase ? (
+              <>
+                <TodayCard phrase={todayPhrase} />
+                <button 
+                  onClick={() => toggleLearn(todayPhrase.id)}
+                  className={`mx-4 flex h-14 items-center justify-center gap-2 rounded-2xl border-2 font-black transition-all active:scale-95 shadow-sm ${stats.learnedIds.includes(todayPhrase.id) ? "bg-green-50 border-green-200 text-green-600" : "bg-white border-primary/20 text-primary"}`}
+                >
+                  <CheckCircle2 className="h-5 w-5" />
+                  {stats.learnedIds.includes(todayPhrase.id) ? "学習済み（タップで解除）" : "本日のフレーズを覚えた！"}
+                </button>
+              </>
+            ) : (
+              <div className="p-12 text-center text-sm text-muted-foreground font-bold animate-pulse">
+                最新のフレーズを読み込み中...
+              </div>
+            )}
           </div>
 
+          {/* 今週のフレーズ（最新7件） */}
           <div className="flex flex-col gap-4">
-            <h3 className="px-2 text-xs font-black uppercase text-muted-foreground tracking-widest">今週のフレーズ</h3>
+            <h3 className="px-2 text-xs font-black uppercase text-muted-foreground tracking-widest">最近のフレーズ</h3>
             <div className="flex flex-col gap-2">
-              {weekPhrases.map((phrase) => (
+              {allDbPhrases.slice(0, 7).map((phrase) => (
                 <div key={phrase.id} className="flex items-center gap-3 rounded-2xl bg-white/80 backdrop-blur-sm p-4 shadow-sm border border-primary/5">
                   <button onClick={() => playAudio(phrase.english)} className="p-2 bg-primary/5 rounded-full hover:bg-primary/10 transition-all">
                     <Volume2 className="h-4 w-4 text-primary" />
@@ -213,7 +253,7 @@ export default function Page() {
                     <p className="text-sm font-bold">{phrase.english}</p>
                     <p className="text-[10px] text-muted-foreground">{phrase.japanese}</p>
                   </div>
-                  <button onClick={() => toggleLearn(phrase.id)} className={`p-2 rounded-xl transition-all active:scale-90 ${stats.learnedIds.includes(phrase.id) ? 'bg-green-500 text-white' : 'bg-primary/5 text-primary'}`}>
+                  <button onClick={() => toggleLearn(phrase.id)} className={`p-2 rounded-xl transition-all active:scale-90 ${stats.learnedIds.includes(phrase.id) ? 'bg-green-500 text-white shadow-md' : 'bg-primary/5 text-primary'}`}>
                     <CheckCircle2 className="h-5 w-5" />
                   </button>
                 </div>
@@ -221,10 +261,11 @@ export default function Page() {
             </div>
           </div>
 
+          {/* リスト表示セクション */}
           <div className="flex flex-col gap-2">
             <button onClick={() => { setShowLearnedList(!showLearnedList); setShowLibrary(false); }} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-green-200 bg-white/80 font-black text-green-600 active:scale-95 transition-all">
               <History className="h-5 w-5" />
-              {showLearnedList ? "リストを閉じる" : `学習済みリストを見直す (${stats.learnedCount})`}
+              {showLearnedList ? "リストを閉じる" : `学習済みリスト (${stats.learnedCount})`}
             </button>
             <button onClick={() => { setShowLibrary(!showLibrary); setShowLearnedList(false); }} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-primary/20 bg-white/80 font-black text-primary active:scale-95 transition-all">
               <BookOpen className="h-5 w-5" />
@@ -236,11 +277,41 @@ export default function Page() {
             <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-col gap-4">
               <h3 className="px-2 text-xs font-black uppercase text-green-600 tracking-widest">これまでに覚えた言葉</h3>
               <div className="flex flex-col gap-2">
-                {[...learnedPhrasesFromLib.map(p => ({id: p.id, en: p.english, ja: p.japanese})), ...otherLearnedItems.map(id => ({id, en: id, ja: "検索から追加"}))].map((item) => (
+                {[...learnedPhrasesFromDb.map(p => ({id: p.id, en: p.english, ja: p.japanese})), ...otherLearnedItems.map(id => ({id, en: id, ja: "検索から追加"}))].map((item) => (
                   <div key={item.id} className="flex items-center gap-3 rounded-2xl bg-white/90 p-4 border border-green-100 shadow-sm">
                     <button onClick={() => playAudio(item.en)} className="p-2 bg-green-100 rounded-full"><Volume2 className="h-4 w-4 text-green-600" /></button>
                     <div className="flex-1">
                       <p className="text-sm font-bold text-green-700">{item.en}</p>
                       <p className="text-[10px] text-green-600/70">{item.ja}</p>
                     </div>
-                    <button onClick={() => toggleLearn
+                    <button onClick={() => toggleLearn(item.id)} className="p-2 rounded-xl bg-green-500 text-white"><CheckCircle2 className="h-5 w-5" /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {showLibrary && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-col gap-4">
+              <h3 className="px-2 text-xs font-black uppercase text-muted-foreground tracking-widest">フレーズ履歴</h3>
+              <div className="flex flex-col gap-2">
+                {allDbPhrases.map((phrase) => (
+                  <div key={phrase.id} className="flex items-center gap-3 rounded-2xl bg-white/90 p-4 border border-primary/5 shadow-sm">
+                    <button onClick={() => playAudio(phrase.english)} className="p-2 bg-primary/5 rounded-full"><Volume2 className="h-4 w-4 text-primary" /></button>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-primary">{phrase.english}</p>
+                      <p className="text-[10px] text-muted-foreground">{phrase.japanese}</p>
+                    </div>
+                    <button onClick={() => toggleLearn(phrase.id)} className={`p-2 rounded-xl transition-all ${stats.learnedIds.includes(phrase.id) ? "bg-green-500 text-white" : "bg-primary/5 text-primary"}`}><CheckCircle2 className="h-5 w-5" /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <footer className="pt-8 text-center text-[10px] font-black uppercase text-muted-foreground tracking-widest">OshiENGLISH - Everyday 7:00 AM</footer>
+        </main>
+      </div>
+    </div>
+  )
+}

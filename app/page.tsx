@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     
     // 修正ポイント：モデル名の前に "models/" を明示的に付与します
     // これで 404 エラーを回避できる可能性が非常に高いです
-    const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" })
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
     const prompt = `以下の英単語について、Vtuberファンのための情報をJSON形式で返してください。
 単語: ${word}

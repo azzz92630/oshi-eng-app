@@ -18,7 +18,6 @@ export default function Page() {
   const todayPhrase = getTodayPhrase()
   const weekPhrases = getWeekPhrases()
 
-  // 起動時にデータを読み込む
   useEffect(() => {
     const saved = localStorage.getItem("oshienglish-stats")
     if (saved) {
@@ -35,9 +34,8 @@ export default function Page() {
     }
   }, [])
 
-  // 学習済みカウントを増やす（重複チェック付き）
   const handleLearn = (id: string) => {
-    if (stats.learnedIds.includes(id)) return // すでに覚えているなら何もしない
+    if (stats.learnedIds.includes(id)) return
 
     setStats(prev => {
       const newIds = [...prev.learnedIds, id]
@@ -51,48 +49,34 @@ export default function Page() {
     })
   }
 
-  // handleSearch内の修正
-const handleSearch = async () => {
-  if (!query.trim()) return
-  setIsLoading(true)
-  setHasSearched(true)
-  setSearchResult(null)
+  const handleSearch = async () => {
+    if (!query.trim()) return
+    setIsLoading(true)
+    setHasSearched(true)
+    setSearchResult(null)
 
-  try {
-    const res = await fetch("/api/search-word", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ word: query.trim() }),
-    })
-    
-    const data = await res.json()
-    
-    if (!res.ok) {
-      // ここで詳細をセットする
-      setSearchResult({ isError: true, message: data.details || data.error });
-      return;
+    try {
+      const res = await fetch("/api/search-word", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ word: query.trim() }),
+      })
+      
+      const data = await res.json()
+      
+      if (!res.ok) {
+        setSearchResult({ isError: true, message: data.details || data.error || "不明なエラー" })
+        return
+      }
+      
+      setSearchResult(data)
+    } catch (error: any) {
+      setSearchResult({ isError: true, message: "通信に失敗しました。ネットワークを確認してください。" })
+    } finally {
+      setIsLoading(false)
     }
-    
-    setSearchResult(data)
-  } catch (error: any) {
-    setSearchResult({ isError: true, message: "通信自体に失敗しました" });
-  } finally {
-    setIsLoading(false)
   }
-}
 
-// 表示部分の修正（result ? の中身）
-{searchResult?.isError ? (
-  <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold leading-relaxed">
-    エラー発生：{searchResult.message}
-  </div>
-) : searchResult ? (
-  // 以前の正常な表示コード...
-) : null}
-
-  
-
-  // 本日のフレーズがすでに学習済みか
   const isTodayLearned = stats.learnedIds.includes(todayPhrase.id)
 
   return (
@@ -102,7 +86,6 @@ const handleSearch = async () => {
         
         <main className="flex flex-col gap-8 px-4 pt-4">
           
-          {/* 検索セクション */}
           <div className="flex flex-col gap-4">
             <div className="relative flex items-center gap-2">
               <div className="relative flex-1">
@@ -132,17 +115,21 @@ const handleSearch = async () => {
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     <p className="text-sm font-bold text-primary">AIが回答を生成しています...</p>
                   </div>
+                ) : searchResult?.isError ? (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold leading-relaxed">
+                    エラー詳細：{searchResult.message}
+                  </div>
                 ) : searchResult ? (
                   <div className="flex flex-col gap-6">
                     <div className="flex items-center justify-between">
                       <span className="rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-primary">AI Answer</span>
                       <button onClick={() => {
-                        const u = new SpeechSynthesisUtterance(searchResult.word);
+                        const u = new SpeechSynthesisUtterance(searchResult.word || query);
                         u.lang = 'en-US'; window.speechSynthesis.speak(u);
-                      }} className="rounded-full bg-white p-2 shadow-sm"><Volume2 className="h-5 w-5 text-primary" /></button>
+                      }} className="rounded-full bg-white p-2 shadow-sm active:scale-90"><Volume2 className="h-5 w-5 text-primary" /></button>
                     </div>
                     <div>
-                      <h2 className="text-3xl font-black text-foreground">{searchResult.word} <span className="text-sm font-bold text-muted-foreground">[{searchResult.pronunciation}]</span></h2>
+                      <h2 className="text-3xl font-black text-foreground">{searchResult.word || query} <span className="text-sm font-bold text-muted-foreground">[{searchResult.pronunciation}]</span></h2>
                       <p className="mt-2 text-lg font-bold text-primary">{searchResult.meaning}</p>
                     </div>
                     <div className="rounded-2xl bg-white p-5 shadow-sm border border-primary/5">
@@ -151,19 +138,15 @@ const handleSearch = async () => {
                       <p className="mt-2 text-sm text-muted-foreground border-t border-dashed pt-2">{searchResult.vtuberExampleJa}</p>
                     </div>
                     <button 
-                      onClick={() => handleLearn(searchResult.word)}
-                      disabled={stats.learnedIds.includes(searchResult.word)}
-                      className={`flex h-14 items-center justify-center gap-2 rounded-2xl font-black transition-all ${stats.learnedIds.includes(searchResult.word) ? 'bg-green-500 text-white' : 'bg-primary text-white shadow-xl active:scale-95'}`}
+                      onClick={() => handleLearn(searchResult.word || query)}
+                      disabled={stats.learnedIds.includes(searchResult.word || query)}
+                      className={`flex h-14 items-center justify-center gap-2 rounded-2xl font-black transition-all ${stats.learnedIds.includes(searchResult.word || query) ? 'bg-green-500 text-white' : 'bg-primary text-white shadow-xl active:scale-95'}`}
                     >
                       <CheckCircle2 className="h-5 w-5" />
-                      {stats.learnedIds.includes(searchResult.word) ? "学習済み！" : "この単語を覚えた！"}
+                      {stats.learnedIds.includes(searchResult.word || query) ? "学習済み！" : "この単語を覚えた！"}
                     </button>
                   </div>
-                ) : (
-                  <p className="text-center text-sm font-bold text-muted-foreground py-4">
-                    検索に失敗しました。もう一度お試しください。
-                  </p>
-                )}
+                ) : null}
               </div>
             )}
           </div>

@@ -1,119 +1,49 @@
 import { NextRequest, NextResponse } from "next/server"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
-const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY
+// サーバー側で読み込み可能な複数の名前をチェック
+const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
 const genAI = new GoogleGenerativeAI(apiKey || "")
-
-interface WordInfo {
-  meaning: string // 意味
-  pronunciation: string // 発音（読み方）
-  vtuberExample: string // Vtuberの配信を想定した例文
-  vtuberExampleJa: string // Vtuberの配信を想定した例文（日本語訳）
-  dailyExample: string // 日常会話での例文
-  dailyExampleJa: string // 日常会話での例文（日本語訳）
-}
 
 export async function POST(request: NextRequest) {
   try {
     if (!apiKey) {
-      return NextResponse.json(
-        { error: "Gemini API キーが設定されていません（.env.local を確認してください）" },
-        { status: 500 }
-      )
+      console.error("API Key is missing in environment variables")
+      return NextResponse.json({ error: "APIキーが設定されていません" }, { status: 500 })
     }
 
     const { word } = await request.json()
+    if (!word) return NextResponse.json({ error: "単語がありません" }, { status: 400 })
 
-    if (!word || typeof word !== "string" || word.trim().length === 0) {
-      return NextResponse.json(
-        { error: "英単語を入力してください" },
-        { status: 400 }
-      )
-    }
-
-    const searchWord = word.trim().toLowerCase()
-
-    // Gemini API で単語情報を生成
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
-    // --- 修正ポイント：AIへの指示（プロンプト）をより厳格にしました ---
-    const prompt = `以下の英単語について、詳細な情報を提供してください。
+    const prompt = `以下の英単語について情報をJSON形式で返してください。
+単語: ${word}
+【ルール】
+1. 発音: 略語は一文字ずつ（エルエムエーオー）。
+2. 意味: 日本語で。
+3. 例文の翻訳: 自然な感情表現（マジか！、ヤバい！等）に意訳してください。カタカナ英語は禁止です。
 
-単語: ${searchWord}
-
-【出力ルール】
-1. 発音 (pronunciation): 
-   - 略語（LMAO等）は一文字ずつ（エルエムエーオー）記載。
-2. 意味 (meaning): 日本語で簡潔に。
-3. 例文の翻訳 (vtuberExampleJa / dailyExampleJa):
-   - 「OMG」を「オーエムジー」、「LMAO」を「ラマオ」のようにカタカナにするのは禁止です。
-   - 文脈に合わせて「ヤバい！」「ウケるw」「信じられない！」といった、自然な日本語の感情表現に翻訳してください。
-   - 配信の例文は、日本のVtuberが実際に言いそうな口調（「〜助かる」「〜てぇてぇ」等が必要な文脈ならそれも含めて）で訳してください。
-
-以下の JSON 形式でのみ返し、説明文は一切不要です：
-
+返却形式：
 {
   "meaning": "意味",
-  "pronunciation": "正確な発音（カタカナ）",
+  "pronunciation": "カタカナ発音",
   "vtuberExample": "英語例文",
-  "vtuberExampleJa": "自然な日本語による意訳",
+  "vtuberExampleJa": "自然な日本語訳",
   "dailyExample": "英語例文",
-  "dailyExampleJa": "自然な日本語による意訳"
-}
-`
+  "dailyExampleJa": "自然な日本語訳"
+}`
 
     const result = await model.generateContent(prompt)
-    const response = await result.response
-    const text = response.text()
+    const text = result.response.text()
+    
+    // JSONを抽出する処理
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(text)
 
-    const parsed = safeParseModelJson(text)
-    const wordInfo: WordInfo = {
-      meaning: parsed.meaning || "",
-      pronunciation: parsed.pronunciation || "",
-      vtuberExample: parsed.vtuberExample || "",
-      vtuberExampleJa: parsed.vtuberExampleJa || "",
-      dailyExample: parsed.dailyExample || "",
-      dailyExampleJa: parsed.dailyExampleJa || "",
-    }
-
-    if (
-      !wordInfo.meaning ||
-      !wordInfo.vtuberExample ||
-      !wordInfo.vtuberExampleJa ||
-      !wordInfo.dailyExample ||
-      !wordInfo.dailyExampleJa
-    ) {
-      return NextResponse.json(
-        { error: "単語情報の生成に失敗しました" },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json({ word: searchWord, ...wordInfo })
-  } catch (error) {
-    console.error("API error:", error)
-    return NextResponse.json(
-      {
-        error:
-          "検索中にエラーが発生しました: " +
-          (error instanceof Error ? error.message : "不明なエラー"),
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({ word, ...parsed })
+  } catch (error: any) {
+    console.error("API Error details:", error.message)
+    return NextResponse.json({ error: "AI検索中にエラーが発生しました" }, { status: 500 })
   }
-}
-
-function safeParseModelJson(text: string): any {
-  const trimmed = text.trim()
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)
-  if (fenced?.[1]) {
-    return JSON.parse(fenced[1].trim())
-  }
-  const firstObjStart = trimmed.indexOf("{")
-  const lastObjEnd = trimmed.lastIndexOf("}")
-  if (firstObjStart !== -1 && lastObjEnd !== -1 && lastObjEnd > firstObjStart) {
-    const candidate = trimmed.slice(firstObjStart, lastObjEnd + 1)
-    return JSON.parse(candidate)
-  }
-  return JSON.parse(trimmed)
 }

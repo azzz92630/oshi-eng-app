@@ -8,7 +8,7 @@ import { getTodayPhrase, getWeekPhrases, phrases as allPhrases } from "@/lib/phr
 import { BookOpen, Sparkles, Search, X, Volume2, Loader2, CheckCircle2, Flame, Trophy } from "lucide-react"
 
 export default function Page() {
-  // --- 1. 全てのデータ管理（State）をここに集約 ---
+  // すべての管理データをここに集約
   const [stats, setStats] = useState({ streak: 1, learnedCount: 0, lastLogin: "" })
   const [query, setQuery] = useState("")
   const [searchResult, setSearchResult] = useState<any>(null)
@@ -21,13 +21,14 @@ export default function Page() {
   const todayPhrase = getTodayPhrase()
   const weekPhrases = getWeekPhrases()
 
-  // --- 2. 起動時にデータを読み込む ---
+  // 起動時に保存された数字を読み込む
   useEffect(() => {
     const saved = localStorage.getItem("oshienglish-stats")
     const todayStr = new Date().toLocaleDateString()
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
+        // ログイン日の記録があれば更新
         setStats({ ...parsed, lastLogin: todayStr })
       } catch (e) {
         setStats({ streak: 1, learnedCount: 0, lastLogin: todayStr })
@@ -37,17 +38,18 @@ export default function Page() {
     }
   }, [])
 
-  // --- 3. 学習済みカウントを増やす共通関数 ---
+  // 学習済みカウントを増やす関数
   const incrementLearned = () => {
     setStats(prev => {
       const newCount = (prev.learnedCount || 0) + 1
       const updated = { ...prev, learnedCount: newCount }
+      // ローカルストレージに即座に保存
       localStorage.setItem("oshienglish-stats", JSON.stringify(updated))
       return updated
     })
   }
 
-  // --- 4. AI検索の実行 ---
+  // AI検索の実行
   const handleSearch = async () => {
     if (!query.trim()) return
     setIsLoading(true)
@@ -64,11 +66,9 @@ export default function Page() {
       const data = await res.json()
       if (res.ok) {
         setSearchResult(data)
-      } else {
-        console.error("Search Failed")
       }
     } catch (error) {
-      console.error(error)
+      console.error("Search Error:", error)
     } finally {
       setIsLoading(false)
     }
@@ -97,8 +97,8 @@ export default function Page() {
               </div>
               <button 
                 onClick={handleSearch}
+                className="h-14 rounded-2xl bg-primary px-6 font-bold text-white shadow-lg active:scale-95 disabled:opacity-50"
                 disabled={isLoading}
-                className="h-14 rounded-2xl bg-primary px-6 font-bold text-white shadow-lg active:scale-95 disabled:opacity-50 transition-all"
               >
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "検索"}
               </button>
@@ -118,17 +118,14 @@ export default function Page() {
                       <button onClick={() => {
                         const u = new SpeechSynthesisUtterance(searchResult.word);
                         u.lang = 'en-US'; window.speechSynthesis.speak(u);
-                      }} className="rounded-full bg-white p-2 shadow-sm active:scale-90"><Volume2 className="h-5 w-5 text-primary" /></button>
+                      }} className="rounded-full bg-white p-2 shadow-sm"><Volume2 className="h-5 w-5 text-primary" /></button>
                     </div>
                     <div>
-                      <div className="flex items-baseline gap-2">
-                        <h2 className="text-3xl font-black text-foreground">{searchResult.word}</h2>
-                        <span className="text-sm font-bold text-muted-foreground">[{searchResult.pronunciation}]</span>
-                      </div>
+                      <h2 className="text-3xl font-black text-foreground">{searchResult.word} <span className="text-sm font-bold text-muted-foreground">[{searchResult.pronunciation}]</span></h2>
                       <p className="mt-2 text-lg font-bold text-primary">{searchResult.meaning}</p>
                     </div>
                     <div className="rounded-2xl bg-white p-5 shadow-sm border border-primary/5">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">配信での例文</p>
+                      <p className="text-[10px] font-black text-primary mb-1 uppercase tracking-widest">配信での例文</p>
                       <p className="font-bold text-foreground leading-relaxed">{searchResult.vtuberExample}</p>
                       <p className="mt-2 text-sm text-muted-foreground border-t border-dashed pt-2">{searchResult.vtuberExampleJa}</p>
                     </div>
@@ -142,7 +139,7 @@ export default function Page() {
                     </button>
                   </div>
                 ) : (
-                  <p className="text-center text-sm font-bold text-muted-foreground">「{query}」は見つかりませんでした</p>
+                  <p className="text-center text-sm font-bold text-muted-foreground">検索結果が取得できませんでした</p>
                 )}
               </div>
             )}
@@ -156,7 +153,6 @@ export default function Page() {
             <p className="text-sm font-medium text-muted-foreground px-8">Vtuber推し活英語フレーズを毎朝7:00お届け</p>
           </div>
 
-          {/* 本日のフレーズ */}
           <div className="flex flex-col gap-3">
             <TodayCard phrase={todayPhrase} />
             <button 
@@ -169,7 +165,7 @@ export default function Page() {
             </button>
           </div>
 
-          {/* 統計表示エリア */}
+          {/* 統計表示 */}
           <div className="grid grid-cols-3 gap-3">
             <div className="flex flex-col items-center justify-center rounded-3xl bg-card p-4 shadow-sm border border-primary/5">
               <Flame className="h-6 w-6 text-orange-500 mb-1" />

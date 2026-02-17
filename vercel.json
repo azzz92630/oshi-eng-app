@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/generate-phrase",
+      "schedule": "0 22 * * *"
+    }
+  ]
+}

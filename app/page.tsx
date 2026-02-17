@@ -51,31 +51,46 @@ export default function Page() {
     })
   }
 
-  // AI検索の実行
-  const handleSearch = async () => {
-    if (!query.trim()) return
-    setIsLoading(true)
-    setHasSearched(true)
-    setSearchResult(null)
+  // handleSearch内の修正
+const handleSearch = async () => {
+  if (!query.trim()) return
+  setIsLoading(true)
+  setHasSearched(true)
+  setSearchResult(null)
 
-    try {
-      const res = await fetch("/api/search-word", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ word: query.trim() }),
-      })
-      
-      if (!res.ok) throw new Error("検索に失敗しました")
-      
-      const data = await res.json()
-      setSearchResult(data)
-    } catch (error) {
-      console.error("Search Error:", error)
-      setSearchResult(null)
-    } finally {
-      setIsLoading(false)
+  try {
+    const res = await fetch("/api/search-word", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ word: query.trim() }),
+    })
+    
+    const data = await res.json()
+    
+    if (!res.ok) {
+      // ここで詳細をセットする
+      setSearchResult({ isError: true, message: data.details || data.error });
+      return;
     }
+    
+    setSearchResult(data)
+  } catch (error: any) {
+    setSearchResult({ isError: true, message: "通信自体に失敗しました" });
+  } finally {
+    setIsLoading(false)
   }
+}
+
+// 表示部分の修正（result ? の中身）
+{searchResult?.isError ? (
+  <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold leading-relaxed">
+    エラー発生：{searchResult.message}
+  </div>
+) : searchResult ? (
+  // 以前の正常な表示コード...
+) : null}
+
+  
 
   // 本日のフレーズがすでに学習済みか
   const isTodayLearned = stats.learnedIds.includes(todayPhrase.id)

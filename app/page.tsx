@@ -6,7 +6,7 @@ import { TodayCard } from "@/components/today-card"
 import { WeeklyList } from "@/components/weekly-list"
 import { PhraseGallery } from "@/components/phrase-gallery"
 import { getTodayPhrase, getWeekPhrases, phrases as allPhrases } from "@/lib/phrases"
-import { BookOpen, Sparkles, Search, Volume2, Loader2, CheckCircle2, Flame, Trophy } from "lucide-react"
+import { BookOpen, Sparkles, Search, Volume2, Loader2, CheckCircle2, Flame, Trophy, Undo2 } from "lucide-react"
 
 export default function Page() {
   const [stats, setStats] = useState({ streak: 1, learnedCount: 0, learnedIds: [] as string[] })
@@ -35,14 +35,33 @@ export default function Page() {
     }
   }, [])
 
-  const handleLearn = (id: string) => {
-    if (stats.learnedIds.includes(id)) return
+  // 学習済み状態を切り替える（トグル機能）
+  const toggleLearn = (id: string) => {
     setStats(prev => {
-      const newIds = [...prev.learnedIds, id]
-      const updated = { ...prev, learnedIds: newIds, learnedCount: newIds.length }
+      let newIds
+      if (prev.learnedIds.includes(id)) {
+        // すでに含まれている場合は削除（解除）
+        newIds = prev.learnedIds.filter(itemId => itemId !== id)
+      } else {
+        // 含まれていない場合は追加
+        newIds = [...prev.learnedIds, id]
+      }
+      
+      const updated = {
+        ...prev,
+        learnedIds: newIds,
+        learnedCount: newIds.length
+      }
       localStorage.setItem("oshienglish-stats", JSON.stringify(updated))
       return updated
     })
+  }
+
+  // 音声を再生する関数
+  const playAudio = (text: string) => {
+    const u = new SpeechSynthesisUtterance(text)
+    u.lang = 'en-US'
+    window.speechSynthesis.speak(u)
   }
 
   const handleSearch = async () => {
@@ -75,6 +94,7 @@ export default function Page() {
         <Header />
         <main className="flex flex-col gap-8 px-4 pt-4">
           
+          {/* 検索セクション */}
           <div className="flex flex-col gap-4">
             <div className="relative flex items-center gap-2">
               <div className="relative flex-1">
@@ -90,7 +110,7 @@ export default function Page() {
               </div>
               <button 
                 onClick={handleSearch}
-                className="h-14 rounded-2xl bg-primary px-6 font-bold text-white shadow-lg active:scale-95 disabled:opacity-50 transition-all"
+                className="h-14 rounded-2xl bg-primary px-6 font-bold text-white shadow-lg active:scale-95 disabled:opacity-50"
                 disabled={isLoading}
               >
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "検索"}
@@ -112,10 +132,9 @@ export default function Page() {
                   <div className="flex flex-col gap-6">
                     <div className="flex items-center justify-between">
                       <span className="rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase text-primary">AI Answer</span>
-                      <button onClick={() => {
-                        const u = new SpeechSynthesisUtterance(searchResult.word || query);
-                        u.lang = 'en-US'; window.speechSynthesis.speak(u);
-                      }} className="rounded-full bg-white p-2 shadow-sm active:scale-90"><Volume2 className="h-5 w-5 text-primary" /></button>
+                      <button onClick={() => playAudio(searchResult.word || query)} className="rounded-full bg-white p-2 shadow-sm active:scale-90 transition-all hover:bg-primary/5">
+                        <Volume2 className="h-5 w-5 text-primary" />
+                      </button>
                     </div>
                     <div>
                       <h2 className="text-3xl font-black">{searchResult.word || query} <span className="text-sm font-bold text-muted-foreground">[{searchResult.pronunciation}]</span></h2>
@@ -127,12 +146,11 @@ export default function Page() {
                       <p className="mt-2 text-sm text-muted-foreground border-t border-dashed pt-2">{searchResult.vtuberExampleJa}</p>
                     </div>
                     <button 
-                      onClick={() => handleLearn(searchResult.word || query)}
-                      disabled={stats.learnedIds.includes(searchResult.word || query)}
-                      className={`flex h-14 items-center justify-center gap-2 rounded-2xl font-black transition-all ${stats.learnedIds.includes(searchResult.word || query) ? 'bg-green-500 text-white cursor-default' : 'bg-primary text-white shadow-xl active:scale-95'}`}
+                      onClick={() => toggleLearn(searchResult.word || query)}
+                      className={`flex h-14 items-center justify-center gap-2 rounded-2xl font-black transition-all shadow-sm active:scale-95 ${stats.learnedIds.includes(searchResult.word || query) ? 'bg-green-500 text-white' : 'bg-primary text-white'}`}
                     >
                       <CheckCircle2 className="h-5 w-5" />
-                      {stats.learnedIds.includes(searchResult.word || query) ? "学習済み！" : "この単語を覚えた！"}
+                      {stats.learnedIds.includes(searchResult.word || query) ? "学習済み（タップで解除）" : "この単語を覚えた！"}
                     </button>
                   </div>
                 ) : null}
@@ -151,12 +169,11 @@ export default function Page() {
           <div className="flex flex-col gap-3">
             <TodayCard phrase={todayPhrase} />
             <button 
-              onClick={() => handleLearn(todayPhrase.id)}
-              disabled={stats.learnedIds.includes(todayPhrase.id)}
-              className={`mx-4 flex h-14 items-center justify-center gap-2 rounded-2xl border-2 font-black transition-all ${stats.learnedIds.includes(todayPhrase.id) ? 'bg-green-50 border-green-200 text-green-600 cursor-default' : 'bg-white border-primary/20 text-primary active:scale-95 shadow-sm'}`}
+              onClick={() => toggleLearn(todayPhrase.id)}
+              className={`mx-4 flex h-14 items-center justify-center gap-2 rounded-2xl border-2 font-black transition-all active:scale-95 shadow-sm ${stats.learnedIds.includes(todayPhrase.id) ? 'bg-green-50 border-green-200 text-green-600' : 'bg-white border-primary/20 text-primary'}`}
             >
               <CheckCircle2 className="h-5 w-5" />
-              {stats.learnedIds.includes(todayPhrase.id) ? "本日のフレーズ学習済み！" : "本日のフレーズを覚えた！"}
+              {stats.learnedIds.includes(todayPhrase.id) ? "学習済み（タップで解除）" : "本日のフレーズを覚えた！"}
             </button>
           </div>
 
@@ -183,14 +200,16 @@ export default function Page() {
             <div className="flex flex-col gap-2">
               {weekPhrases.map((phrase) => (
                 <div key={phrase.id} className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-sm border border-primary/5">
+                  <button onClick={() => playAudio(phrase.english)} className="p-2 bg-primary/5 rounded-full hover:bg-primary/10 transition-all">
+                    <Volume2 className="h-4 w-4 text-primary" />
+                  </button>
                   <div className="flex-1">
                     <p className="text-sm font-bold">{phrase.english}</p>
                     <p className="text-[10px] text-muted-foreground">{phrase.japanese}</p>
                   </div>
                   <button 
-                    onClick={() => handleLearn(phrase.id)}
-                    disabled={stats.learnedIds.includes(phrase.id)}
-                    className={`p-2 rounded-xl transition-all ${stats.learnedIds.includes(phrase.id) ? 'bg-green-100 text-green-600' : 'bg-primary/5 text-primary active:scale-90'}`}
+                    onClick={() => toggleLearn(phrase.id)}
+                    className={`p-2 rounded-xl transition-all active:scale-90 ${stats.learnedIds.includes(phrase.id) ? 'bg-green-500 text-white shadow-md' : 'bg-primary/5 text-primary'}`}
                   >
                     <CheckCircle2 className="h-5 w-5" />
                   </button>
@@ -207,17 +226,19 @@ export default function Page() {
           {showLibrary && (
             <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-col gap-4">
               <h3 className="px-2 text-xs font-black uppercase tracking-widest text-muted-foreground">すべてのフレーズ</h3>
-              <div className="grid grid-cols-1 gap-2">
+              <div className="flex flex-col gap-2">
                 {allPhrases.map((phrase) => (
                   <div key={phrase.id} className="flex items-center gap-3 rounded-2xl bg-white p-4 border border-primary/5 shadow-sm">
+                    <button onClick={() => playAudio(phrase.english)} className="p-2 bg-primary/5 rounded-full hover:bg-primary/10 transition-all">
+                      <Volume2 className="h-4 w-4 text-primary" />
+                    </button>
                     <div className="flex-1">
                       <p className="text-sm font-bold text-primary">{phrase.english}</p>
                       <p className="text-[10px] text-muted-foreground">{phrase.japanese}</p>
                     </div>
                     <button 
-                      onClick={() => handleLearn(phrase.id)}
-                      disabled={stats.learnedIds.includes(phrase.id)}
-                      className={`p-2 rounded-xl transition-all ${stats.learnedIds.includes(phrase.id) ? 'bg-green-100 text-green-600' : 'bg-primary/5 text-primary active:scale-90'}`}
+                      onClick={() => toggleLearn(phrase.id)}
+                      className={`p-2 rounded-xl transition-all active:scale-90 ${stats.learnedIds.includes(phrase.id) ? 'bg-green-500 text-white shadow-md' : 'bg-primary/5 text-primary'}`}
                     >
                       <CheckCircle2 className="h-5 w-5" />
                     </button>

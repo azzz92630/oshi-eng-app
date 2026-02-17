@@ -6,7 +6,7 @@ import { TodayCard } from "@/components/today-card"
 import { WeeklyList } from "@/components/weekly-list"
 import { PhraseGallery } from "@/components/phrase-gallery"
 import { getTodayPhrase, getWeekPhrases, phrases as allPhrases } from "@/lib/phrases"
-import { BookOpen, Sparkles, Search, Volume2, Loader2, CheckCircle2, Flame, Trophy, PartyPopper } from "lucide-react"
+import { BookOpen, Sparkles, Search, Volume2, Loader2, CheckCircle2, Flame, Trophy, PartyPopper, History } from "lucide-react"
 
 export default function Page() {
   const [stats, setStats] = useState({ streak: 1, learnedCount: 0, learnedIds: [] as string[] })
@@ -15,12 +15,12 @@ export default function Page() {
   const [isLoading, setIsLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   const [showLibrary, setShowLibrary] = useState(false)
+  const [showLearnedList, setShowLearnedList] = useState(false)
   const [message, setMessage] = useState("")
 
   const todayPhrase = getTodayPhrase()
   const weekPhrases = getWeekPhrases()
 
-  // レベル計算（5個ごとにアップ）
   const level = Math.floor((stats.learnedCount || 0) / 5) + 1
 
   useEffect(() => {
@@ -89,6 +89,10 @@ export default function Page() {
     }
   }
 
+  // 学習済みリストの作成（ライブラリにあるもの＋検索で見つけた単語）
+  const learnedPhrases = allPhrases.filter(p => stats.learnedIds.includes(p.id))
+  const otherLearned = stats.learnedIds.filter(id => !allPhrases.find(p => p.id === id))
+
   return (
     <div className="min-h-screen bg-background pb-24 font-sans text-foreground">
       <div className="mx-auto max-w-lg">
@@ -113,7 +117,7 @@ export default function Page() {
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   placeholder="英単語を検索..."
-                  className="h-14 w-full rounded-2xl border-2 border-primary/10 bg-card pl-12 pr-12 text-sm focus:border-primary/30 focus:outline-none"
+                  className="h-14 w-full rounded-2xl border-2 border-primary/10 bg-card pl-12 pr-12 text-sm focus:border-primary/30 focus:outline-none transition-all"
                 />
               </div>
               <button onClick={handleSearch} className="h-14 rounded-2xl bg-primary px-6 font-bold text-white shadow-lg active:scale-95 disabled:opacity-50" disabled={isLoading}>
@@ -201,21 +205,47 @@ export default function Page() {
                     <p className="text-sm font-bold">{phrase.english}</p>
                     <p className="text-[10px] text-muted-foreground">{phrase.japanese}</p>
                   </div>
-                  <button 
-                    onClick={() => toggleLearn(phrase.id)}
-                    className={`p-2 rounded-xl transition-all active:scale-90 ${stats.learnedIds.includes(phrase.id) ? 'bg-green-500 text-white' : 'bg-primary/5 text-primary'}`}
-                  >
+                  <button onClick={() => toggleLearn(phrase.id)} className={`p-2 rounded-xl transition-all active:scale-90 ${stats.learnedIds.includes(phrase.id) ? 'bg-green-500 text-white' : 'bg-primary/5 text-primary'}`}>
                     <CheckCircle2 className="h-5 w-5" />
                   </button>
                 </div>
               ))}
             </div>
           </div>
-          
-          <button onClick={() => setShowLibrary(!showLibrary)} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-primary/20 bg-card font-black text-primary active:scale-95 transition-all">
-            <BookOpen className="h-5 w-5" />
-            {showLibrary ? "ライブラリを閉じる" : "フレーズライブラリを開く"}
-          </button>
+
+          <div className="flex flex-col gap-2">
+            <button onClick={() => { setShowLearnedList(!showLearnedList); setShowLibrary(false); }} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-green-200 bg-green-50/30 font-black text-green-600 active:scale-95 transition-all">
+              <History className="h-5 w-5" />
+              {showLearnedList ? "学習済みリストを閉じる" : `学習済みリストを見直す (${stats.learnedCount})`}
+            </button>
+
+            <button onClick={() => { setShowLibrary(!showLibrary); setShowLearnedList(false); }} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-primary/20 bg-card font-black text-primary active:scale-95 transition-all">
+              <BookOpen className="h-5 w-5" />
+              {showLibrary ? "ライブラリを閉じる" : "すべてのフレーズを見る"}
+            </button>
+          </div>
+
+          {showLearnedList && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-col gap-4 pt-4">
+              <h3 className="px-2 text-xs font-black uppercase text-green-600 tracking-widest">これまでに覚えた言葉</h3>
+              {stats.learnedCount === 0 ? (
+                <p className="text-center py-8 text-sm text-muted-foreground font-bold">まだ覚えた言葉がありません</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {[...learnedPhrases.map(p => ({id: p.id, en: p.english, ja: p.japanese})), ...otherLearned.map(id => ({id, en: id, ja: "検索から追加"}))].map((item) => (
+                    <div key={item.id} className="flex items-center gap-3 rounded-2xl bg-green-50/50 p-4 border border-green-100 shadow-sm">
+                      <button onClick={() => playAudio(item.en)} className="p-2 bg-green-100 rounded-full"><Volume2 className="h-4 w-4 text-green-600" /></button>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-green-700">{item.en}</p>
+                        <p className="text-[10px] text-green-600/70">{item.ja}</p>
+                      </div>
+                      <button onClick={() => toggleLearn(item.id)} className="p-2 rounded-xl bg-green-500 text-white"><CheckCircle2 className="h-5 w-5" /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {showLibrary && (
             <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-col gap-4 pt-4">
@@ -223,19 +253,12 @@ export default function Page() {
               <div className="flex flex-col gap-2">
                 {allPhrases.map((phrase) => (
                   <div key={phrase.id} className="flex items-center gap-3 rounded-2xl bg-white p-4 border border-primary/5 shadow-sm">
-                    <button onClick={() => playAudio(phrase.english)} className="p-2 bg-primary/5 rounded-full hover:bg-primary/10 transition-all">
-                      <Volume2 className="h-4 w-4 text-primary" />
-                    </button>
+                    <button onClick={() => playAudio(phrase.english)} className="p-2 bg-primary/5 rounded-full"><Volume2 className="h-4 w-4 text-primary" /></button>
                     <div className="flex-1">
                       <p className="text-sm font-bold text-primary">{phrase.english}</p>
                       <p className="text-[10px] text-muted-foreground">{phrase.japanese}</p>
                     </div>
-                    <button 
-                      onClick={() => toggleLearn(phrase.id)}
-                      className={`p-2 rounded-xl transition-all active:scale-90 ${stats.learnedIds.includes(phrase.id) ? 'bg-green-500 text-white shadow-md' : 'bg-primary/5 text-primary'}`}
-                    >
-                      <CheckCircle2 className="h-5 w-5" />
-                    </button>
+                    <button onClick={() => toggleLearn(phrase.id)} className={`p-2 rounded-xl transition-all ${stats.learnedIds.includes(phrase.id) ? 'bg-green-500 text-white' : 'bg-primary/5 text-primary'}`}><CheckCircle2 className="h-5 w-5" /></button>
                   </div>
                 ))}
               </div>

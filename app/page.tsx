@@ -8,42 +8,44 @@ import { getTodayPhrase, getWeekPhrases, phrases as allPhrases } from "@/lib/phr
 import { BookOpen, Sparkles, Search, X, Volume2, Loader2, CheckCircle2, Flame, Trophy } from "lucide-react"
 
 export default function Page() {
-  // すべての管理データをここに集約
-  const [stats, setStats] = useState({ streak: 1, learnedCount: 0, lastLogin: "" })
+  const [stats, setStats] = useState({ streak: 1, learnedCount: 0, learnedIds: [] as string[] })
   const [query, setQuery] = useState("")
   const [searchResult, setSearchResult] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
-  const [todayLearned, setTodayLearned] = useState(false)
-  const [searchWordLearned, setSearchWordLearned] = useState(false)
   const [showLibrary, setShowLibrary] = useState(false)
 
   const todayPhrase = getTodayPhrase()
   const weekPhrases = getWeekPhrases()
 
-  // 起動時に保存された数字を読み込む
+  // 起動時にデータを読み込む
   useEffect(() => {
     const saved = localStorage.getItem("oshienglish-stats")
-    const todayStr = new Date().toLocaleDateString()
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
-        // ログイン日の記録があれば更新
-        setStats({ ...parsed, lastLogin: todayStr })
+        setStats({
+          streak: parsed.streak || 1,
+          learnedCount: parsed.learnedCount || 0,
+          learnedIds: parsed.learnedIds || []
+        })
       } catch (e) {
-        setStats({ streak: 1, learnedCount: 0, lastLogin: todayStr })
+        console.error("保存データの読み込みに失敗しました")
       }
-    } else {
-      setStats(prev => ({ ...prev, lastLogin: todayStr }))
     }
   }, [])
 
-  // 学習済みカウントを増やす関数
-  const incrementLearned = () => {
+  // 学習済みカウントを増やす（重複チェック付き）
+  const handleLearn = (id: string) => {
+    if (stats.learnedIds.includes(id)) return // すでに覚えているなら何もしない
+
     setStats(prev => {
-      const newCount = (prev.learnedCount || 0) + 1
-      const updated = { ...prev, learnedCount: newCount }
-      // ローカルストレージに即座に保存
+      const newIds = [...prev.learnedIds, id]
+      const updated = {
+        ...prev,
+        learnedIds: newIds,
+        learnedCount: newIds.length
+      }
       localStorage.setItem("oshienglish-stats", JSON.stringify(updated))
       return updated
     })
@@ -55,7 +57,6 @@ export default function Page() {
     setIsLoading(true)
     setHasSearched(true)
     setSearchResult(null)
-    setSearchWordLearned(false)
 
     try {
       const res = await fetch("/api/search-word", {
@@ -63,16 +64,21 @@ export default function Page() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ word: query.trim() }),
       })
+      
+      if (!res.ok) throw new Error("検索に失敗しました")
+      
       const data = await res.json()
-      if (res.ok) {
-        setSearchResult(data)
-      }
+      setSearchResult(data)
     } catch (error) {
       console.error("Search Error:", error)
+      setSearchResult(null)
     } finally {
       setIsLoading(false)
     }
   }
+
+  // 本日のフレーズがすでに学習済みか
+  const isTodayLearned = stats.learnedIds.includes(todayPhrase.id)
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -109,7 +115,7 @@ export default function Page() {
                 {isLoading ? (
                   <div className="flex flex-col items-center py-6 gap-3">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p className="text-sm font-bold text-primary">AIが解説を作成中...</p>
+                    <p className="text-sm font-bold text-primary">AIが回答を生成しています...</p>
                   </div>
                 ) : searchResult ? (
                   <div className="flex flex-col gap-6">
@@ -130,16 +136,18 @@ export default function Page() {
                       <p className="mt-2 text-sm text-muted-foreground border-t border-dashed pt-2">{searchResult.vtuberExampleJa}</p>
                     </div>
                     <button 
-                      onClick={() => { if(!searchWordLearned) { incrementLearned(); setSearchWordLearned(true); } }}
-                      disabled={searchWordLearned}
-                      className={`flex h-14 items-center justify-center gap-2 rounded-2xl font-black transition-all ${searchWordLearned ? 'bg-green-500 text-white cursor-default' : 'bg-primary text-white shadow-xl active:scale-95'}`}
+                      onClick={() => handleLearn(searchResult.word)}
+                      disabled={stats.learnedIds.includes(searchResult.word)}
+                      className={`flex h-14 items-center justify-center gap-2 rounded-2xl font-black transition-all ${stats.learnedIds.includes(searchResult.word) ? 'bg-green-500 text-white' : 'bg-primary text-white shadow-xl active:scale-95'}`}
                     >
                       <CheckCircle2 className="h-5 w-5" />
-                      {searchWordLearned ? "学習済み！" : "この単語を覚えた！"}
+                      {stats.learnedIds.includes(searchResult.word) ? "学習済み！" : "この単語を覚えた！"}
                     </button>
                   </div>
                 ) : (
-                  <p className="text-center text-sm font-bold text-muted-foreground">検索結果が取得できませんでした</p>
+                  <p className="text-center text-sm font-bold text-muted-foreground py-4">
+                    検索に失敗しました。もう一度お試しください。
+                  </p>
                 )}
               </div>
             )}
@@ -156,25 +164,24 @@ export default function Page() {
           <div className="flex flex-col gap-3">
             <TodayCard phrase={todayPhrase} />
             <button 
-              onClick={() => { if(!todayLearned) { incrementLearned(); setTodayLearned(true); } }}
-              disabled={todayLearned}
-              className={`mx-4 flex h-14 items-center justify-center gap-2 rounded-2xl border-2 font-black transition-all ${todayLearned ? 'bg-green-50 border-green-200 text-green-600 cursor-default' : 'bg-white border-primary/20 text-primary shadow-sm active:scale-95'}`}
+              onClick={() => handleLearn(todayPhrase.id)}
+              disabled={isTodayLearned}
+              className={`mx-4 flex h-14 items-center justify-center gap-2 rounded-2xl border-2 font-black transition-all ${isTodayLearned ? 'bg-green-50 border-green-200 text-green-600 cursor-default' : 'bg-white border-primary/20 text-primary shadow-sm active:scale-95'}`}
             >
               <CheckCircle2 className="h-5 w-5" />
-              {todayLearned ? "本日のフレーズ学習済み！" : "本日のフレーズを覚えた！"}
+              {isTodayLearned ? "本日のフレーズ学習済み！" : "本日のフレーズを覚えた！"}
             </button>
           </div>
 
-          {/* 統計表示 */}
           <div className="grid grid-cols-3 gap-3">
             <div className="flex flex-col items-center justify-center rounded-3xl bg-card p-4 shadow-sm border border-primary/5">
               <Flame className="h-6 w-6 text-orange-500 mb-1" />
-              <span className="text-xl font-black text-foreground">{stats.streak || 1}</span>
+              <span className="text-xl font-black text-foreground">{stats.streak}</span>
               <span className="text-[10px] font-bold text-muted-foreground uppercase">連続日数</span>
             </div>
             <div className="flex flex-col items-center justify-center rounded-3xl bg-primary/10 p-4 shadow-sm border border-primary/10">
               <BookOpen className="h-6 w-6 text-primary mb-1" />
-              <span className="text-xl font-black text-primary">{stats.learnedCount || 0}</span>
+              <span className="text-xl font-black text-primary">{stats.learnedCount}</span>
               <span className="text-[10px] font-bold text-primary uppercase">学習済み</span>
             </div>
             <div className="flex flex-col items-center justify-center rounded-3xl bg-card p-4 shadow-sm border border-primary/5">

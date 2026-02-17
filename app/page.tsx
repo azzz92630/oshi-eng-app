@@ -6,7 +6,7 @@ import { TodayCard } from "@/components/today-card"
 import { WeeklyList } from "@/components/weekly-list"
 import { PhraseGallery } from "@/components/phrase-gallery"
 import { getTodayPhrase, getWeekPhrases, phrases as allPhrases } from "@/lib/phrases"
-import { BookOpen, Sparkles, Search, Volume2, Loader2, CheckCircle2, Flame, Trophy, Undo2 } from "lucide-react"
+import { BookOpen, Sparkles, Search, Volume2, Loader2, CheckCircle2, Flame, Trophy, PartyPopper } from "lucide-react"
 
 export default function Page() {
   const [stats, setStats] = useState({ streak: 1, learnedCount: 0, learnedIds: [] as string[] })
@@ -15,9 +15,21 @@ export default function Page() {
   const [isLoading, setIsLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   const [showLibrary, setShowLibrary] = useState(false)
+  const [message, setMessage] = useState("")
 
   const todayPhrase = getTodayPhrase()
   const weekPhrases = getWeekPhrases()
+
+  // レベル計算ロジック（5個覚えるごとにレベルアップ）
+  const level = Math.floor((stats.learnedCount || 0) / 5) + 1
+  
+  // 称号の決定
+  const getRank = (lv: number) => {
+    if (lv >= 10) return "伝説のリスナー"
+    if (lv >= 5) return "ガチ勢リスナー"
+    if (lv >= 3) return "中堅リスナー"
+    return "新人リスナー"
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem("oshienglish-stats")
@@ -29,39 +41,31 @@ export default function Page() {
           learnedCount: parsed.learnedCount || 0,
           learnedIds: parsed.learnedIds || []
         })
+
+        // ログイン日数に応じたメッセージ演出
+        if (parsed.streak >= 7) {
+          setMessage("すごい！1週間連続ログイン達成ですね！")
+        } else if (parsed.streak >= 3) {
+          setMessage("3日坊主を克服！その調子です！")
+        }
       } catch (e) {
         console.error("Failed to load stats")
       }
     }
   }, [])
 
-  // 学習済み状態を切り替える（トグル機能）
   const toggleLearn = (id: string) => {
     setStats(prev => {
       let newIds
       if (prev.learnedIds.includes(id)) {
-        // すでに含まれている場合は削除（解除）
         newIds = prev.learnedIds.filter(itemId => itemId !== id)
       } else {
-        // 含まれていない場合は追加
         newIds = [...prev.learnedIds, id]
       }
-      
-      const updated = {
-        ...prev,
-        learnedIds: newIds,
-        learnedCount: newIds.length
-      }
+      const updated = { ...prev, learnedIds: newIds, learnedCount: newIds.length }
       localStorage.setItem("oshienglish-stats", JSON.stringify(updated))
       return updated
     })
-  }
-
-  // 音声を再生する関数
-  const playAudio = (text: string) => {
-    const u = new SpeechSynthesisUtterance(text)
-    u.lang = 'en-US'
-    window.speechSynthesis.speak(u)
   }
 
   const handleSearch = async () => {
@@ -94,7 +98,15 @@ export default function Page() {
         <Header />
         <main className="flex flex-col gap-8 px-4 pt-4">
           
-          {/* 検索セクション */}
+          {/* お祝いメッセージの表示 */}
+          {message && (
+            <div className="flex items-center gap-3 rounded-2xl bg-primary/10 p-4 border border-primary/20 animate-bounce">
+              <PartyPopper className="h-5 w-5 text-primary" />
+              <p className="text-sm font-bold text-primary">{message}</p>
+              <button onClick={() => setMessage("")} className="ml-auto text-primary/50 text-xs">×</button>
+            </div>
+          )}
+
           <div className="flex flex-col gap-4">
             <div className="relative flex items-center gap-2">
               <div className="relative flex-1">
@@ -105,20 +117,16 @@ export default function Page() {
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   placeholder="英単語を検索..."
-                  className="h-14 w-full rounded-2xl border-2 border-primary/10 bg-card pl-12 pr-12 text-sm focus:border-primary/30 focus:outline-none transition-all"
+                  className="h-14 w-full rounded-2xl border-2 border-primary/10 bg-card pl-12 pr-12 text-sm focus:border-primary/30 focus:outline-none"
                 />
               </div>
-              <button 
-                onClick={handleSearch}
-                className="h-14 rounded-2xl bg-primary px-6 font-bold text-white shadow-lg active:scale-95 disabled:opacity-50"
-                disabled={isLoading}
-              >
+              <button onClick={handleSearch} className="h-14 rounded-2xl bg-primary px-6 font-bold text-white shadow-lg active:scale-95 disabled:opacity-50" disabled={isLoading}>
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "検索"}
               </button>
             </div>
 
             {hasSearched && (
-              <div className="rounded-3xl border-2 border-primary/10 bg-primary/5 p-6 animate-in fade-in slide-in-from-top-2">
+              <div className="rounded-3xl border-2 border-primary/10 bg-primary/5 p-6">
                 {isLoading ? (
                   <div className="flex flex-col items-center py-6 gap-3">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -130,18 +138,19 @@ export default function Page() {
                   </div>
                 ) : searchResult ? (
                   <div className="flex flex-col gap-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase text-primary">AI Answer</span>
-                      <button onClick={() => playAudio(searchResult.word || query)} className="rounded-full bg-white p-2 shadow-sm active:scale-90 transition-all hover:bg-primary/5">
-                        <Volume2 className="h-5 w-5 text-primary" />
-                      </button>
+                      <button onClick={() => {
+                        const u = new SpeechSynthesisUtterance(searchResult.word || query);
+                        u.lang = 'en-US'; window.speechSynthesis.speak(u);
+                      }} className="p-2 bg-white rounded-full shadow-sm active:scale-90"><Volume2 className="h-5 w-5 text-primary" /></button>
                     </div>
                     <div>
                       <h2 className="text-3xl font-black">{searchResult.word || query} <span className="text-sm font-bold text-muted-foreground">[{searchResult.pronunciation}]</span></h2>
                       <p className="mt-2 text-lg font-bold text-primary">{searchResult.meaning}</p>
                     </div>
                     <div className="rounded-2xl bg-white p-5 border border-primary/5 shadow-sm">
-                      <p className="text-[10px] font-black text-primary mb-1 uppercase">配信での例文</p>
+                      <p className="text-[10px] font-black text-primary mb-1 uppercase tracking-widest">配信での例文</p>
                       <p className="font-bold leading-relaxed">{searchResult.vtuberExample}</p>
                       <p className="mt-2 text-sm text-muted-foreground border-t border-dashed pt-2">{searchResult.vtuberExampleJa}</p>
                     </div>
@@ -158,25 +167,7 @@ export default function Page() {
             )}
           </div>
 
-          <div className="flex flex-col items-center gap-2 py-4 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10">
-              <Sparkles className="h-8 w-8 text-primary" />
-            </div>
-            <h1 className="text-2xl font-black">推しの言葉を、英語でも。</h1>
-            <p className="text-sm font-medium text-muted-foreground px-8">Vtuber推し活英語を毎朝7:00お届け</p>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <TodayCard phrase={todayPhrase} />
-            <button 
-              onClick={() => toggleLearn(todayPhrase.id)}
-              className={`mx-4 flex h-14 items-center justify-center gap-2 rounded-2xl border-2 font-black transition-all active:scale-95 shadow-sm ${stats.learnedIds.includes(todayPhrase.id) ? 'bg-green-50 border-green-200 text-green-600' : 'bg-white border-primary/20 text-primary'}`}
-            >
-              <CheckCircle2 className="h-5 w-5" />
-              {stats.learnedIds.includes(todayPhrase.id) ? "学習済み（タップで解除）" : "本日のフレーズを覚えた！"}
-            </button>
-          </div>
-
+          {/* 統計表示エリア：レベルが連動するように修正 */}
           <div className="grid grid-cols-3 gap-3">
             <div className="flex flex-col items-center justify-center rounded-3xl bg-card p-4 shadow-sm border border-primary/5">
               <Flame className="h-6 w-6 text-orange-500 mb-1" />
@@ -190,33 +181,23 @@ export default function Page() {
             </div>
             <div className="flex flex-col items-center justify-center rounded-3xl bg-card p-4 shadow-sm border border-primary/5">
               <Trophy className="h-6 w-6 text-yellow-500 mb-1" />
-              <span className="text-xl font-black">Lv.1</span>
-              <span className="text-[10px] font-bold text-muted-foreground uppercase">レベル</span>
+              <span className="text-xl font-black">Lv.{level}</span>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase">{getRank(level)}</span>
             </div>
           </div>
 
-          <div className="flex flex-col gap-4">
-            <h3 className="px-2 text-xs font-black uppercase tracking-widest text-muted-foreground">今週のフレーズ</h3>
-            <div className="flex flex-col gap-2">
-              {weekPhrases.map((phrase) => (
-                <div key={phrase.id} className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-sm border border-primary/5">
-                  <button onClick={() => playAudio(phrase.english)} className="p-2 bg-primary/5 rounded-full hover:bg-primary/10 transition-all">
-                    <Volume2 className="h-4 w-4 text-primary" />
-                  </button>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold">{phrase.english}</p>
-                    <p className="text-[10px] text-muted-foreground">{phrase.japanese}</p>
-                  </div>
-                  <button 
-                    onClick={() => toggleLearn(phrase.id)}
-                    className={`p-2 rounded-xl transition-all active:scale-90 ${stats.learnedIds.includes(phrase.id) ? 'bg-green-500 text-white shadow-md' : 'bg-primary/5 text-primary'}`}
-                  >
-                    <CheckCircle2 className="h-5 w-5" />
-                  </button>
-                </div>
-              ))}
-            </div>
+          <div className="flex flex-col gap-3">
+            <TodayCard phrase={todayPhrase} />
+            <button 
+              onClick={() => toggleLearn(todayPhrase.id)}
+              className={`mx-4 flex h-14 items-center justify-center gap-2 rounded-2xl border-2 font-black transition-all active:scale-95 shadow-sm ${stats.learnedIds.includes(todayPhrase.id) ? 'bg-green-50 border-green-200 text-green-600' : 'bg-white border-primary/20 text-primary'}`}
+            >
+              <CheckCircle2 className="h-5 w-5" />
+              {stats.learnedIds.includes(todayPhrase.id) ? "学習済み（タップで解除）" : "本日のフレーズを覚えた！"}
+            </button>
           </div>
+
+          <WeeklyList phrases={weekPhrases} todayId={todayPhrase.id} />
           
           <button onClick={() => setShowLibrary(!showLibrary)} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-primary/20 bg-card font-black text-primary active:scale-95 transition-all">
             <BookOpen className="h-5 w-5" />
@@ -225,21 +206,19 @@ export default function Page() {
 
           {showLibrary && (
             <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-col gap-4">
-              <h3 className="px-2 text-xs font-black uppercase tracking-widest text-muted-foreground">すべてのフレーズ</h3>
+              <h3 className="px-2 text-xs font-black uppercase text-muted-foreground tracking-widest">すべてのフレーズ</h3>
               <div className="flex flex-col gap-2">
                 {allPhrases.map((phrase) => (
                   <div key={phrase.id} className="flex items-center gap-3 rounded-2xl bg-white p-4 border border-primary/5 shadow-sm">
-                    <button onClick={() => playAudio(phrase.english)} className="p-2 bg-primary/5 rounded-full hover:bg-primary/10 transition-all">
-                      <Volume2 className="h-4 w-4 text-primary" />
-                    </button>
+                    <button onClick={() => {
+                      const u = new SpeechSynthesisUtterance(phrase.english);
+                      u.lang = 'en-US'; window.speechSynthesis.speak(u);
+                    }} className="p-2 bg-primary/5 rounded-full"><Volume2 className="h-4 w-4 text-primary" /></button>
                     <div className="flex-1">
                       <p className="text-sm font-bold text-primary">{phrase.english}</p>
                       <p className="text-[10px] text-muted-foreground">{phrase.japanese}</p>
                     </div>
-                    <button 
-                      onClick={() => toggleLearn(phrase.id)}
-                      className={`p-2 rounded-xl transition-all active:scale-90 ${stats.learnedIds.includes(phrase.id) ? 'bg-green-500 text-white shadow-md' : 'bg-primary/5 text-primary'}`}
-                    >
+                    <button onClick={() => toggleLearn(phrase.id)} className={`p-2 rounded-xl transition-all ${stats.learnedIds.includes(phrase.id) ? 'bg-green-500 text-white' : 'bg-primary/5 text-primary'}`}>
                       <CheckCircle2 className="h-5 w-5" />
                     </button>
                   </div>

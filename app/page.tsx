@@ -24,7 +24,6 @@ export default function Page() {
   const level = Math.floor((stats.learnedCount || 0) / 5) + 1
 
   useEffect(() => {
-    // 1. データの読み込み
     const saved = localStorage.getItem("oshienglish-stats")
     if (saved) {
       try {
@@ -41,7 +40,6 @@ export default function Page() {
       }
     }
 
-    // 2. 時間に応じた背景設定
     const updateTheme = () => {
       const hour = new Date().getHours()
       if (hour >= 5 && hour < 11) {
@@ -199,6 +197,30 @@ export default function Page() {
               <CheckCircle2 className="h-5 w-5" />
               {stats.learnedIds.includes(todayPhrase.id) ? "学習済み（タップで解除）" : "本日のフレーズを覚えた！"}
             </button>
+          </div>
+
+          {/* ここ：今週のフレーズリストを復活させました */}
+          <div className="flex flex-col gap-4">
+            <h3 className="px-2 text-xs font-black uppercase text-muted-foreground tracking-widest">今週のフレーズ</h3>
+            <div className="flex flex-col gap-2">
+              {weekPhrases.map((phrase) => (
+                <div key={phrase.id} className="flex items-center gap-3 rounded-2xl bg-white/80 backdrop-blur-sm p-4 shadow-sm border border-primary/5">
+                  <button onClick={() => playAudio(phrase.english)} className="p-2 bg-primary/5 rounded-full hover:bg-primary/10 transition-all">
+                    <Volume2 className="h-4 w-4 text-primary" />
+                  </button>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold">{phrase.english}</p>
+                    <p className="text-[10px] text-muted-foreground">{phrase.japanese}</p>
+                  </div>
+                  <button 
+                    onClick={() => toggleLearn(phrase.id)}
+                    className={`p-2 rounded-xl transition-all active:scale-90 ${stats.learnedIds.includes(phrase.id) ? 'bg-green-500 text-white shadow-md' : 'bg-primary/5 text-primary'}`}
+                  >
+                    <CheckCircle2 className="h-5 w-5" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* リスト表示セクション */}

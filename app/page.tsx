@@ -10,9 +10,12 @@ import { PhraseGallery } from "@/components/phrase-gallery"
 import { getTodayPhrase, getWeekPhrases, phrases as allPhrases } from "@/lib/phrases"
 import { BookOpen, Sparkles, Search, X, Volume2, Loader2, CheckCircle2 } from "lucide-react"
 
-// --- 統計管理システムの強化 ---
+// --- 統計管理システム ---
 const StatsContext = createContext<any>(null)
-export const useStats = () => useContext(StatsContext)
+export const useStats = () => {
+  const context = useContext(StatsContext)
+  return context || { streak: 1, learnedCount: 0, addLearnedCount: () => {} }
+}
 
 function AllInOneProvider({ children }: { children: React.ReactNode }) {
   const [stats, setStats] = useState({ streak: 1, learnedCount: 0, lastLogin: "" })
@@ -22,30 +25,36 @@ function AllInOneProvider({ children }: { children: React.ReactNode }) {
     const today = new Date().toLocaleDateString()
 
     if (saved) {
-      const parsed = JSON.parse(saved)
-      let newStreak = parsed.streak || 1
-      
-      if (parsed.lastLogin && parsed.lastLogin !== today) {
-        const lastDate = new Date(parsed.lastLogin)
-        const yesterday = new Date()
-        yesterday.setDate(yesterday.getDate() - 1)
+      try {
+        const parsed = JSON.parse(saved)
+        let newStreak = parsed.streak || 1
+        
+        if (parsed.lastLogin && parsed.lastLogin !== today) {
+          const lastDate = new Date(parsed.lastLogin)
+          const yesterday = new Date()
+          yesterday.setDate(yesterday.getDate() - 1)
 
-        if (lastDate.toLocaleDateString() === yesterday.toLocaleDateString()) {
-          newStreak += 1 // 連続ログイン成功
-        } else {
-          newStreak = 1 // 途切れたのでリセット
+          if (lastDate.toLocaleDateString() === yesterday.toLocaleDateString()) {
+            newStreak += 1
+          } else {
+            newStreak = 1
+          }
         }
+        setStats({ ...parsed, streak: newStreak, lastLogin: today })
+      } catch (e) {
+        setStats({ streak: 1, learnedCount: 0, lastLogin: today })
       }
-      setStats({ ...parsed, streak: newStreak, lastLogin: today })
     } else {
       setStats({ streak: 1, learnedCount: 0, lastLogin: today })
     }
   }, [])
 
   const addLearnedCount = () => {
-    const newStats = { ...stats, learnedCount: stats.learnedCount + 1 }
-    setStats(newStats)
-    localStorage.setItem("oshienglish-stats", JSON.stringify(newStats))
+    setStats(prev => {
+      const newStats = { ...prev, learnedCount: prev.learnedCount + 1 }
+      localStorage.setItem("oshienglish-stats", JSON.stringify(newStats))
+      return newStats
+    })
   }
 
   return (
@@ -55,6 +64,7 @@ function AllInOneProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
+// --- 検索コンポーネント ---
 function AIWordSearch() {
   const { addLearnedCount } = useStats()
   const [query, setQuery] = useState("")
@@ -66,9 +76,12 @@ function AIWordSearch() {
   const handleSearch = async () => {
     const term = query.trim()
     if (!term) return
+
     setLoading(true)
     setHasSearched(true)
+    setResult(null)
     setIsLearned(false)
+
     try {
       const response = await fetch("/api/search-word", {
         method: "POST",
@@ -76,18 +89,13 @@ function AIWordSearch() {
         body: JSON.stringify({ word: term }),
       })
       const data = await response.json()
-      if (response.ok) setResult(data)
+      if (response.ok) {
+        setResult(data)
+      }
     } catch (error) {
-      console.error(error)
+      console.error("Search error:", error)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleLearn = () => {
-    if (!isLearned) {
-      addLearnedCount()
-      setIsLearned(true)
     }
   }
 
@@ -105,71 +113,153 @@ function AIWordSearch() {
             className="h-12 w-full rounded-2xl border border-primary/20 bg-card pl-10 pr-10 text-sm focus:outline-none"
           />
         </div>
-        <button onClick={handleSearch} disabled={loading} className="h-12 rounded-2xl bg-primary px-6 text-sm font-bold text-white shadow-md disabled:opacity-50">
+        <button 
+          onClick={handleSearch}
+          disabled={loading}
+          className="h-12 rounded-2xl bg-primary px-6 text-sm font-bold text-white shadow-md active:scale-95 disabled:opacity-50"
+        >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "検索"}
         </button>
       </div>
 
-      {hasSearched && result && (
-        <div className="mt-2 p-4 rounded-2xl bg-primary/5 border border-primary/10 animate-in fade-in slide-in-from-top-1">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded-full">AI回答</span>
-            <div className="flex gap-2">
-              <button onClick={() => {
-                const utterance = new SpeechSynthesisUtterance(result.word);
-                utterance.lang = 'en-US';
-                window.speechSynthesis.speak(utterance);
-              }} className="p-2 bg-white rounded-full shadow-sm"><Volume2 className="h-4 w-4 text-primary" /></button>
+      {hasSearched && (
+        <div className="mt-2 p-4 rounded-2xl bg-primary/5 border border-primary/10">
+          {loading ? (
+            <div className="flex flex-col items-center py-4 gap-2">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-xs text-muted-foreground">AIが意味を考えています...</p>
             </div>
-          </div>
-          <div className="mb-4">
-            <h3 className="text-xl font-bold text-foreground">{result.word} <span className="text-sm font-normal text-muted-foreground">[{result.pronunciation}]</span></h3>
-            <p className="text-sm font-bold text-primary mt-1">{result.meaning}</p>
-          </div>
-          <div className="space-y-2 mb-4">
-            <div className="p-3 bg-white rounded-xl text-xs shadow-sm">
-              <p className="font-bold text-primary mb-1">配信例文</p>
-              <p>{result.vtuberExample}</p>
-              <p className="text-muted-foreground mt-1">{result.vtuberExampleJa}</p>
+          ) : result ? (
+            <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-top-1">
+              <div className="flex justify-between items-start">
+                <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded-full">AI回答</span>
+                <button 
+                  onClick={() => {
+                    const utterance = new SpeechSynthesisUtterance(result.word);
+                    utterance.lang = 'en-US';
+                    window.speechSynthesis.speak(utterance);
+                  }}
+                  className="p-2 hover:bg-primary/10 rounded-full transition-colors"
+                >
+                  <Volume2 className="h-4 w-4 text-primary" />
+                </button>
+              </div>
+              <div>
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-xl font-bold text-foreground">{result.word}</h3>
+                  <span className="text-xs text-muted-foreground">[{result.pronunciation}]</span>
+                </div>
+                <p className="text-sm font-bold text-primary mt-1">{result.meaning}</p>
+              </div>
+              <div className="space-y-3">
+                <div className="p-3 bg-card rounded-xl border border-primary/5 shadow-sm">
+                  <p className="text-[10px] font-bold text-primary mb-1">配信での例文</p>
+                  <p className="text-sm text-foreground leading-relaxed">{result.vtuberExample}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{result.vtuberExampleJa}</p>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => {
+                  if (!isLearned) {
+                    addLearnedCount()
+                    setIsLearned(true)
+                  }
+                }}
+                disabled={isLearned}
+                className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition-all ${
+                  isLearned 
+                  ? 'bg-green-500 text-white cursor-default' 
+                  : 'bg-primary text-white shadow-lg active:scale-95'
+                }`}
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                {isLearned ? "学習済み！" : "この単語を覚えた！"}
+              </button>
             </div>
-          </div>
-          
-          <button 
-            onClick={handleLearn}
-            disabled={isLearned}
-            className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition-all ${isLearned ? 'bg-green-500 text-white' : 'bg-primary text-white shadow-lg active:scale-95'}`}
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            {isLearned ? "学習済み！" : "この単語を覚えた！"}
-          </button>
+          ) : (
+            <div className="text-center py-4 text-xs text-muted-foreground">
+              結果を取得できませんでした
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
+// --- メインページ ---
 export default function Page() {
+  const { addLearnedCount } = useStats()
   const todayPhrase = getTodayPhrase()
   const weekPhrases = getWeekPhrases()
   const [showLibrary, setShowLibrary] = useState(false)
+  const [todayLearned, setTodayLearned] = useState(false)
 
   return (
     <AllInOneProvider>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pb-20">
         <div className="mx-auto max-w-lg">
           <Header />
-          <main className="flex flex-col gap-6 pt-4 pb-20">
+          <main className="flex flex-col gap-6 pt-4">
             <AIWordSearch />
-            <TodayCard phrase={todayPhrase} />
+            
+            <div className="flex flex-col items-center gap-2 py-4 text-center">
+              <div className="animate-float">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 shadow-inner">
+                  <Sparkles className="h-8 w-8 text-primary" />
+                </div>
+              </div>
+              <h2 className="text-balance font-display text-xl font-extrabold text-foreground">推しの言葉を、英語でも。</h2>
+              <p className="text-sm text-muted-foreground px-8">Vtuber推し活に使える英語フレーズを毎朝お届け</p>
+            </div>
+
+            {/* 本日のフレーズカードに「覚えた」ボタンを追加 */}
+            <div className="relative">
+              <TodayCard phrase={todayPhrase} />
+              <div className="px-4 mt-2">
+                <button 
+                  onClick={() => {
+                    if (!todayLearned) {
+                      addLearnedCount()
+                      setTodayLearned(true)
+                    }
+                  }}
+                  disabled={todayLearned}
+                  className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-all ${
+                    todayLearned 
+                    ? 'bg-green-100 text-green-600 border border-green-200 cursor-default' 
+                    : 'bg-white border border-primary/20 text-primary shadow-sm active:scale-95'
+                  }`}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {todayLearned ? "本日のフレーズ学習済み！" : "本日のフレーズを覚えた！"}
+                </button>
+              </div>
+            </div>
+
             <StreakCard />
             <WeeklyList phrases={weekPhrases} todayId={todayPhrase.id} />
+            
             <div className="flex flex-col items-center px-4">
-              <button onClick={() => setShowLibrary(!showLibrary)} className="w-full py-4 rounded-2xl border border-primary/20 bg-card text-sm font-bold text-primary">
+              <button 
+                onClick={() => setShowLibrary(!showLibrary)} 
+                className="w-full flex items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-card py-4 text-sm font-bold text-primary shadow-sm hover:bg-primary/5 transition-all"
+              >
+                <BookOpen className="h-4 w-4" />
                 {showLibrary ? "ライブラリを閉じる" : "フレーズライブラリを開く"}
               </button>
             </div>
-            {showLibrary && <section className="px-4 animate-fade-in-up pt-4"><PhraseGallery phrases={allPhrases} /></section>}
-            <footer className="pb-8 pt-8 text-center text-xs text-muted-foreground">OshiENGLISH - 毎朝7:00更新の推し活英語</footer>
+
+            {showLibrary && (
+              <section className="px-4 animate-fade-in-up pt-4">
+                <PhraseGallery phrases={allPhrases} />
+              </section>
+            )}
+            
+            <footer className="pb-8 pt-8 text-center text-xs text-muted-foreground">
+              OshiENGLISH - 毎朝7:00更新の推し活英語アシスタント
+            </footer>
           </main>
         </div>
       </div>

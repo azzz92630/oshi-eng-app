@@ -6,21 +6,20 @@ const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || "
 
 export async function GET(request: NextRequest) {
   try {
-    // 認証チェック（外部から勝手に叩かれないようにするための簡易的な仕組み）
+    // 【一時修正】認証チェックを一旦コメントアウトして無効化します
+    /*
     const authHeader = request.headers.get('authorization')
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      // ローカル開発時はスキップできるようにしておく
       if (process.env.NODE_ENV === 'production') {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
     }
+    */
 
-    const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" })
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
 
     const prompt = `あなたはVtuberリスナー向けの英語学習エキスパートです。
 海外の配信チャットやSNSで今まさに流行っている、あるいは頻出する英単語やスラングを1つ選んでください。
-既存のリストと被らないような、新鮮な言葉を選定してください。
-
 必ず以下のJSON形式のみで返してください：
 {
   "english": "英単語またはスラング",
@@ -32,7 +31,12 @@ export async function GET(request: NextRequest) {
 }`
 
     const result = await model.generateContent(prompt)
-    const data = JSON.parse(result.response.text().match(/\{[\s\S]*\}/)![0])
+    const text = result.response.text()
+    // JSON部分だけを抽出する処理
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) throw new Error("JSONの生成に失敗しました")
+    
+    const data = JSON.parse(jsonMatch[0])
 
     // Supabaseに保存
     const { error } = await supabase.from('phrases').insert([data])
@@ -42,6 +46,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: "Success", data })
 
   } catch (error: any) {
+    console.error("Error details:", error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

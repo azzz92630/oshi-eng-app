@@ -178,14 +178,54 @@ export default function Page() {
             </div>
           </div>
 
-          <WeeklyList phrases={weekPhrases} todayId={todayPhrase.id} />
+          <div className="flex flex-col gap-4">
+            <h3 className="px-2 text-xs font-black uppercase tracking-widest text-muted-foreground">今週のフレーズ</h3>
+            <div className="flex flex-col gap-2">
+              {weekPhrases.map((phrase) => (
+                <div key={phrase.id} className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-sm border border-primary/5">
+                  <div className="flex-1">
+                    <p className="text-sm font-bold">{phrase.english}</p>
+                    <p className="text-[10px] text-muted-foreground">{phrase.japanese}</p>
+                  </div>
+                  <button 
+                    onClick={() => handleLearn(phrase.id)}
+                    disabled={stats.learnedIds.includes(phrase.id)}
+                    className={`p-2 rounded-xl transition-all ${stats.learnedIds.includes(phrase.id) ? 'bg-green-100 text-green-600' : 'bg-primary/5 text-primary active:scale-90'}`}
+                  >
+                    <CheckCircle2 className="h-5 w-5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
           
           <button onClick={() => setShowLibrary(!showLibrary)} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-primary/20 bg-card font-black text-primary active:scale-95 transition-all">
             <BookOpen className="h-5 w-5" />
             {showLibrary ? "ライブラリを閉じる" : "フレーズライブラリを開く"}
           </button>
 
-          {showLibrary && <div className="animate-in fade-in slide-in-from-bottom-4 pt-4"><PhraseGallery phrases={allPhrases} /></div>}
+          {showLibrary && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-col gap-4">
+              <h3 className="px-2 text-xs font-black uppercase tracking-widest text-muted-foreground">すべてのフレーズ</h3>
+              <div className="grid grid-cols-1 gap-2">
+                {allPhrases.map((phrase) => (
+                  <div key={phrase.id} className="flex items-center gap-3 rounded-2xl bg-white p-4 border border-primary/5 shadow-sm">
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-primary">{phrase.english}</p>
+                      <p className="text-[10px] text-muted-foreground">{phrase.japanese}</p>
+                    </div>
+                    <button 
+                      onClick={() => handleLearn(phrase.id)}
+                      disabled={stats.learnedIds.includes(phrase.id)}
+                      className={`p-2 rounded-xl transition-all ${stats.learnedIds.includes(phrase.id) ? 'bg-green-100 text-green-600' : 'bg-primary/5 text-primary active:scale-90'}`}
+                    >
+                      <CheckCircle2 className="h-5 w-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           
           <footer className="pt-8 text-center text-[10px] font-black uppercase text-muted-foreground tracking-widest">OshiENGLISH - Everyday 7:00 AM</footer>
         </main>

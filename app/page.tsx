@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-// コンポーネントの読み込みパスがプロジェクトと合っているか確認してください
 import { Header } from "@/components/header"
 import { TodayCard } from "@/components/today-card"
 import { WeeklyList } from "@/components/weekly-list"
@@ -20,7 +19,6 @@ export default function Page() {
   const todayPhrase = getTodayPhrase()
   const weekPhrases = getWeekPhrases()
 
-  // データの読み込み
   useEffect(() => {
     const saved = localStorage.getItem("oshienglish-stats")
     if (saved) {
@@ -37,7 +35,6 @@ export default function Page() {
     }
   }, [])
 
-  // 学習済み処理
   const handleLearn = (id: string) => {
     if (stats.learnedIds.includes(id)) return
     setStats(prev => {
@@ -48,7 +45,6 @@ export default function Page() {
     })
   }
 
-  // 検索処理
   const handleSearch = async () => {
     if (!query.trim()) return
     setIsLoading(true)
@@ -79,7 +75,6 @@ export default function Page() {
         <Header />
         <main className="flex flex-col gap-8 px-4 pt-4">
           
-          {/* 検索セクション */}
           <div className="flex flex-col gap-4">
             <div className="relative flex items-center gap-2">
               <div className="relative flex-1">
@@ -95,7 +90,7 @@ export default function Page() {
               </div>
               <button 
                 onClick={handleSearch}
-                className="h-14 rounded-2xl bg-primary px-6 font-bold text-white shadow-lg active:scale-95 disabled:opacity-50"
+                className="h-14 rounded-2xl bg-primary px-6 font-bold text-white shadow-lg active:scale-95 disabled:opacity-50 transition-all"
                 disabled={isLoading}
               >
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "検索"}
@@ -110,17 +105,17 @@ export default function Page() {
                     <p className="text-sm font-bold text-primary">AIが回答を生成中...</p>
                   </div>
                 ) : searchResult?.isError ? (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold">
-                    エラー：{searchResult.message}
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold leading-relaxed">
+                    エラー詳細：{searchResult.message}
                   </div>
                 ) : searchResult ? (
                   <div className="flex flex-col gap-6">
                     <div className="flex items-center justify-between">
-                      <span className="rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase text-primary">AI回答</span>
+                      <span className="rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase text-primary">AI Answer</span>
                       <button onClick={() => {
                         const u = new SpeechSynthesisUtterance(searchResult.word || query);
                         u.lang = 'en-US'; window.speechSynthesis.speak(u);
-                      }} className="rounded-full bg-white p-2 shadow-sm"><Volume2 className="h-5 w-5 text-primary" /></button>
+                      }} className="rounded-full bg-white p-2 shadow-sm active:scale-90"><Volume2 className="h-5 w-5 text-primary" /></button>
                     </div>
                     <div>
                       <h2 className="text-3xl font-black">{searchResult.word || query} <span className="text-sm font-bold text-muted-foreground">[{searchResult.pronunciation}]</span></h2>
@@ -134,7 +129,7 @@ export default function Page() {
                     <button 
                       onClick={() => handleLearn(searchResult.word || query)}
                       disabled={stats.learnedIds.includes(searchResult.word || query)}
-                      className={`flex h-14 items-center justify-center gap-2 rounded-2xl font-black transition-all ${stats.learnedIds.includes(searchResult.word || query) ? 'bg-green-500 text-white' : 'bg-primary text-white shadow-xl active:scale-95'}`}
+                      className={`flex h-14 items-center justify-center gap-2 rounded-2xl font-black transition-all ${stats.learnedIds.includes(searchResult.word || query) ? 'bg-green-500 text-white cursor-default' : 'bg-primary text-white shadow-xl active:scale-95'}`}
                     >
                       <CheckCircle2 className="h-5 w-5" />
                       {stats.learnedIds.includes(searchResult.word || query) ? "学習済み！" : "この単語を覚えた！"}
@@ -158,7 +153,7 @@ export default function Page() {
             <button 
               onClick={() => handleLearn(todayPhrase.id)}
               disabled={stats.learnedIds.includes(todayPhrase.id)}
-              className={`mx-4 flex h-14 items-center justify-center gap-2 rounded-2xl border-2 font-black transition-all ${stats.learnedIds.includes(todayPhrase.id) ? 'bg-green-50 border-green-200 text-green-600' : 'bg-white border-primary/20 text-primary active:scale-95'}`}
+              className={`mx-4 flex h-14 items-center justify-center gap-2 rounded-2xl border-2 font-black transition-all ${stats.learnedIds.includes(todayPhrase.id) ? 'bg-green-50 border-green-200 text-green-600 cursor-default' : 'bg-white border-primary/20 text-primary active:scale-95 shadow-sm'}`}
             >
               <CheckCircle2 className="h-5 w-5" />
               {stats.learnedIds.includes(todayPhrase.id) ? "本日のフレーズ学習済み！" : "本日のフレーズを覚えた！"}
@@ -185,14 +180,14 @@ export default function Page() {
 
           <WeeklyList phrases={weekPhrases} todayId={todayPhrase.id} />
           
-          <button onClick={() => setShowLibrary(!showLibrary)} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-primary/20 bg-card font-black text-primary active:scale-95">
+          <button onClick={() => setShowLibrary(!showLibrary)} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-primary/20 bg-card font-black text-primary active:scale-95 transition-all">
             <BookOpen className="h-5 w-5" />
             {showLibrary ? "ライブラリを閉じる" : "フレーズライブラリを開く"}
           </button>
 
-          {showLibrary && <div className="animate-in fade-in slide-in-from-bottom-4"><PhraseGallery phrases={allPhrases} /></div>}
+          {showLibrary && <div className="animate-in fade-in slide-in-from-bottom-4 pt-4"><PhraseGallery phrases={allPhrases} /></div>}
           
-          <footer className="pt-8 text-center text-[10px] font-black uppercase text-muted-foreground">OshiENGLISH - Everyday 7:00 AM</footer>
+          <footer className="pt-8 text-center text-[10px] font-black uppercase text-muted-foreground tracking-widest">OshiENGLISH - Everyday 7:00 AM</footer>
         </main>
       </div>
     </div>

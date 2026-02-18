@@ -1,10 +1,11 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import { Header } from "@/components/header"
 import { TodayCard } from "@/components/today-card"
 import { getTodayPhrase, getWeekPhrases, phrases as allPhrases } from "@/lib/phrases"
 import { BookOpen, Search, Volume2, Loader2, CheckCircle2, Flame, Trophy, PartyPopper, History } from "lucide-react"
+import confetti from "canvas-confetti"
 
 export default function Page() {
   const [stats, setStats] = useState({ streak: 1, learnedCount: 0, learnedIds: [] as string[] })
@@ -16,10 +17,36 @@ export default function Page() {
   const [showLearnedList, setShowLearnedList] = useState(false)
   const [message, setMessage] = useState("")
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  
+  // 前回のレベルを記録するためのRef
+  const prevLevelRef = useRef<number>(1)
 
   const todayPhrase = getTodayPhrase()
   const weekPhrases = getWeekPhrases()
-  const level = Math.floor((stats.learnedCount || 0) / 5) + 1
+  
+  // レベル計算ロジック：5単語ごとに1レベルアップ
+  const currentLevel = Math.floor((stats.learnedCount || 0) / 5) + 1
+
+  // 紙吹雪を飛ばす関数
+  const fireConfetti = () => {
+    const duration = 3 * 1000
+    const animationEnd = Date.now() + duration
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 }
+
+    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min
+
+    const interval: any = setInterval(function() {
+      const timeLeft = animationEnd - Date.now()
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval)
+      }
+
+      const particleCount = 50 * (timeLeft / duration)
+      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } })
+      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } })
+    }, 250)
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem("oshienglish-stats")
@@ -40,10 +67,8 @@ export default function Page() {
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
           if (diffDays === 1) {
-            // ちょうど1日後のアクセスなら継続
             currentStreak += 1
           } else if (diffDays > 1) {
-            // 2日以上空いたらリセット
             currentStreak = 1
           }
         }
@@ -59,12 +84,24 @@ export default function Page() {
     }
 
     setStats(currentStats)
+    // 初期読み込み時のレベルをRefに保存
+    prevLevelRef.current = Math.floor((currentStats.learnedCount || 0) / 5) + 1
+    
     localStorage.setItem("oshienglish-stats", JSON.stringify(currentStats))
     localStorage.setItem("oshienglish-last-date", today)
 
     if (currentStats.streak >= 7) setMessage("すごい！1週間連続ログイン達成ですね！")
     else if (currentStats.streak >= 3) setMessage("3日坊主を克服！その調子です！")
   }, [])
+
+  // レベルアップ検知用のuseEffect
+  useEffect(() => {
+    if (currentLevel > prevLevelRef.current) {
+      fireConfetti()
+      setMessage(`LEVEL UP! Lv.${currentLevel} になりました！`)
+      prevLevelRef.current = currentLevel
+    }
+  }, [currentLevel])
 
   const toggleLearn = (id: string) => {
     setStats(prev => {
@@ -186,7 +223,7 @@ export default function Page() {
           <div className="grid grid-cols-3 gap-3 px-4">
             <div className="flex flex-col items-center justify-center rounded-3xl bg-card p-4 shadow-sm border border-primary/5"><Flame className="h-6 w-6 text-orange-500 mb-1" /><span className="text-xl font-black">{stats.streak}</span><span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center">連続日数</span></div>
             <div className="flex flex-col items-center justify-center rounded-3xl bg-primary/10 p-4 shadow-sm border border-primary/10"><BookOpen className="h-6 w-6 text-primary mb-1" /><span className="text-xl font-black text-primary">{stats.learnedCount}</span><span className="text-[10px] font-bold text-primary uppercase tracking-widest text-center">学習済み</span></div>
-            <div className="flex flex-col items-center justify-center rounded-3xl bg-card p-4 shadow-sm border border-primary/5"><Trophy className="h-6 w-6 text-yellow-500 mb-1" /><span className="text-xl font-black">Lv.{level}</span><span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center">レベル</span></div>
+            <div className="flex flex-col items-center justify-center rounded-3xl bg-card p-4 shadow-sm border border-primary/5"><Trophy className="h-6 w-6 text-yellow-500 mb-1" /><span className="text-xl font-black">Lv.{currentLevel}</span><span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center">レベル</span></div>
           </div>
 
           <div className="flex flex-col gap-3">

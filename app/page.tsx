@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react"
 import { Header } from "@/components/header"
 import { TodayCard } from "@/components/today-card"
 import { getTodayPhrase, getWeekPhrases, phrases as allPhrases } from "@/lib/phrases"
-import { BookOpen, Sparkles, Search, Volume2, Loader2, CheckCircle2, Flame, Trophy, PartyPopper, History } from "lucide-react"
+import { BookOpen, Search, Volume2, Loader2, CheckCircle2, Flame, Trophy, PartyPopper, History } from "lucide-react"
 
 export default function Page() {
   const [stats, setStats] = useState({ streak: 1, learnedCount: 0, learnedIds: [] as string[] })
@@ -19,7 +19,6 @@ export default function Page() {
 
   const todayPhrase = getTodayPhrase()
   const weekPhrases = getWeekPhrases()
-
   const level = Math.floor((stats.learnedCount || 0) / 5) + 1
 
   useEffect(() => {
@@ -27,22 +26,14 @@ export default function Page() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
-        setStats({
-          streak: parsed.streak || 1,
-          learnedCount: parsed.learnedCount || 0,
-          learnedIds: parsed.learnedIds || []
-        })
-        if (parsed.streak >= 7) setMessage("すごい！1週間連続ログイン達成ですね！")
-        else if (parsed.streak >= 3) setMessage("3日坊主を克服！その調子です！")
+        setStats({ streak: parsed.streak || 1, learnedCount: parsed.learnedCount || 0, learnedIds: parsed.learnedIds || [] })
       } catch (e) { console.error("Failed to load stats") }
     }
   }, [])
 
   const toggleLearn = (id: string) => {
     setStats(prev => {
-      let newIds = prev.learnedIds.includes(id) 
-        ? prev.learnedIds.filter(itemId => itemId !== id) 
-        : [...prev.learnedIds, id];
+      let newIds = prev.learnedIds.includes(id) ? prev.learnedIds.filter(itemId => itemId !== id) : [...prev.learnedIds, id];
       const updated = { ...prev, learnedIds: newIds, learnedCount: newIds.length }
       localStorage.setItem("oshienglish-stats", JSON.stringify(updated))
       return updated
@@ -52,13 +43,8 @@ export default function Page() {
   const playAudio = (text: string) => {
     let speechText = text.toLowerCase();
     if (speechText.includes("lets goooo")) speechText = "lets gooo"; 
-    const dictionary: { [key: string]: string } = {
-      "copium": "cope-e-um", "lmao": "l m a o", "ikr": "i k r", "tldr": "t l d r", "fr fr": "for real for real"
-    };
-    speechText = dictionary[speechText] || speechText;
     const u = new SpeechSynthesisUtterance(speechText);
     u.lang = 'en-US';
-    u.pitch = 1.1;
     u.rate = 0.85; 
     window.speechSynthesis.speak(u);
   }
@@ -67,29 +53,19 @@ export default function Page() {
     if (!query.trim()) return
     setIsLoading(true); setHasSearched(true); setSearchResult(null)
     try {
-      const res = await fetch("/api/search-word", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ word: query.trim() }),
-      })
+      const res = await fetch("/api/search-word", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ word: query.trim() }) })
       const data = await res.json()
-      if (!res.ok) setSearchResult({ isError: true, message: data.details || "エラーが発生しました" })
-      else setSearchResult(data)
+      setSearchResult(res.ok ? data : { isError: true, message: data.details || "エラーが発生しました" })
     } catch (error) { setSearchResult({ isError: true, message: "通信に失敗しました" }) }
     finally { setIsLoading(false) }
   }
-
-  const learnedPhrases = allPhrases.filter(p => stats.learnedIds.includes(p.id))
-  const otherLearned = stats.learnedIds.filter(id => !allPhrases.find(p => p.id === id))
 
   const PhraseItem = ({ phrase }: { phrase: any }) => {
     const isExpanded = expandedId === phrase.id;
     return (
       <div className="flex flex-col rounded-2xl bg-white shadow-sm border border-primary/5 overflow-hidden transition-all">
         <div className="flex items-center gap-3 p-4">
-          <button onClick={() => playAudio(phrase.english)} className="p-2 bg-primary/5 rounded-full hover:bg-primary/10 transition-all">
-            <Volume2 className="h-4 w-4 text-primary" />
-          </button>
+          <button onClick={() => playAudio(phrase.english)} className="p-2 bg-primary/5 rounded-full"><Volume2 className="h-4 w-4 text-primary" /></button>
           <div className="flex-1 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : phrase.id)}>
             <div className="flex items-baseline gap-2">
               <p className="text-sm font-bold text-primary">{phrase.english}</p>
@@ -97,21 +73,12 @@ export default function Page() {
             </div>
             <p className="text-[10px] text-muted-foreground">{phrase.japanese}</p>
           </div>
-          <button onClick={() => toggleLearn(phrase.id)} className={`p-2 rounded-xl transition-all ${stats.learnedIds.includes(phrase.id) ? 'bg-green-500 text-white shadow-md' : 'bg-primary/5 text-primary'}`}>
-            <CheckCircle2 className="h-5 w-5" />
-          </button>
+          <button onClick={() => toggleLearn(phrase.id)} className={`p-2 rounded-xl transition-all ${stats.learnedIds.includes(phrase.id) ? 'bg-green-500 text-white' : 'bg-primary/5 text-primary'}`}><CheckCircle2 className="h-5 w-5" /></button>
         </div>
         {isExpanded && phrase.example && (
           <div className="bg-primary/5 px-4 pb-4 pt-2 border-t border-dashed border-primary/10 animate-in slide-in-from-top-1">
-            <div className="mb-2">
-              <p className="text-[9px] font-black text-primary uppercase mb-1 tracking-widest">Example</p>
-              <p className="text-xs font-bold leading-relaxed">{phrase.example}</p>
-              <p className="text-[10px] text-muted-foreground">{phrase.exampleJa}</p>
-            </div>
-            <div>
-              <p className="text-[9px] font-black text-orange-500 uppercase mb-1 tracking-widest">Tip</p>
-              <p className="text-[10px] font-medium text-orange-700 leading-relaxed bg-orange-50 p-2 rounded-lg border border-orange-100">{phrase.tip}</p>
-            </div>
+            <div className="mb-2"><p className="text-[9px] font-black text-primary uppercase mb-1">Example</p><p className="text-xs font-bold leading-relaxed">{phrase.example}</p><p className="text-[10px] text-muted-foreground">{phrase.exampleJa}</p></div>
+            <div><p className="text-[9px] font-black text-orange-500 uppercase mb-1">Tip</p><p className="text-[10px] font-medium text-orange-700 leading-relaxed bg-orange-50 p-2 rounded-lg">{phrase.tip}</p></div>
           </div>
         )}
       </div>
@@ -123,54 +90,22 @@ export default function Page() {
       <div className="mx-auto max-w-lg">
         <Header />
         <main className="flex flex-col gap-8 px-4 pt-4">
-          {message && (
-            <div className="flex items-center gap-3 rounded-2xl bg-primary/10 p-4 border border-primary/20 animate-bounce">
-              <PartyPopper className="h-5 w-5 text-primary" />
-              <p className="text-sm font-bold text-primary">{message}</p>
-              <button onClick={() => setMessage("")} className="ml-auto text-primary/50 text-xs">×</button>
-            </div>
-          )}
-
           <div className="flex flex-col gap-4">
             <div className="relative flex items-center gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  placeholder="英単語を検索..."
-                  className="h-14 w-full rounded-2xl border-2 border-primary/10 bg-card pl-12 pr-12 text-sm focus:border-primary/30 focus:outline-none"
-                />
+                <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder="英単語を検索..." className="h-14 w-full rounded-2xl border-2 border-primary/10 bg-card pl-12 pr-12 text-sm focus:border-primary/30 focus:outline-none" />
               </div>
-              <button onClick={handleSearch} className="h-14 rounded-2xl bg-primary px-6 font-bold text-white shadow-lg active:scale-95 disabled:opacity-50" disabled={isLoading}>
-                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "検索"}
-              </button>
+              <button onClick={handleSearch} className="h-14 rounded-2xl bg-primary px-6 font-bold text-white shadow-lg disabled:opacity-50" disabled={isLoading}>{isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "検索"}</button>
             </div>
-
             {hasSearched && (
               <div className="rounded-3xl border-2 border-primary/10 bg-primary/5 p-6 animate-in fade-in slide-in-from-top-2">
-                {isLoading ? (
-                  <div className="flex flex-col items-center py-6 gap-3"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="text-sm font-bold text-primary">AI回答中...</p></div>
-                ) : searchResult?.isError ? (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold leading-relaxed">エラー：{searchResult.message}</div>
-                ) : searchResult ? (
+                {isLoading ? <div className="flex flex-col items-center py-6 gap-3"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="text-sm font-bold text-primary">AI回答中...</p></div> : searchResult?.isError ? <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-bold leading-relaxed">エラー：{searchResult.message}</div> : searchResult ? (
                   <div className="flex flex-col gap-6">
-                    <div className="flex justify-between items-center">
-                      <span className="rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase text-primary">AI Answer</span>
-                      <button onClick={() => playAudio(searchResult.word || query)} className="p-2 bg-white rounded-full shadow-sm active:scale-90"><Volume2 className="h-5 w-5 text-primary" /></button>
-                    </div>
-                    <div>
-                      <h2 className="text-3xl font-black">{searchResult.word || query} <span className="text-sm font-bold text-muted-foreground">[{searchResult.pronunciation}]</span></h2>
-                      <p className="mt-2 text-lg font-bold text-primary">{searchResult.meaning}</p>
-                    </div>
-                    <div className="rounded-2xl bg-white p-5 border border-primary/5 shadow-sm">
-                      <p className="text-[10px] font-black text-primary mb-1 uppercase tracking-widest">配信での例文</p>
-                      <p className="font-bold leading-relaxed">{searchResult.vtuberExample}</p>
-                      <p className="mt-2 text-sm text-muted-foreground border-t border-dashed pt-2">{searchResult.vtuberExampleJa}</p>
-                    </div>
-                    <button onClick={() => toggleLearn(searchResult.word || query)} className={`flex h-14 items-center justify-center gap-2 rounded-2xl font-black shadow-sm active:scale-95 ${stats.learnedIds.includes(searchResult.word || query) ? 'bg-green-500 text-white' : 'bg-primary text-white'}`}><CheckCircle2 className="h-5 w-5" />{stats.learnedIds.includes(searchResult.word || query) ? "学習済み（解除）" : "この単語を覚えた！"}</button>
+                    <div className="flex justify-between items-center"><span className="rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase text-primary">AI Answer</span><button onClick={() => playAudio(searchResult.word || query)} className="p-2 bg-white rounded-full shadow-sm"><Volume2 className="h-5 w-5 text-primary" /></button></div>
+                    <div><h2 className="text-3xl font-black">{searchResult.word || query} <span className="text-sm font-bold text-muted-foreground">[{searchResult.pronunciation}]</span></h2><p className="mt-2 text-lg font-bold text-primary">{searchResult.meaning}</p></div>
+                    <div className="rounded-2xl bg-white p-5 border border-primary/5 shadow-sm"><p className="text-[10px] font-black text-primary mb-1 uppercase tracking-widest">配信での例文</p><p className="font-bold leading-relaxed">{searchResult.vtuberExample}</p><p className="mt-2 text-sm text-muted-foreground border-t border-dashed pt-2">{searchResult.vtuberExampleJa}</p></div>
+                    <button onClick={() => toggleLearn(searchResult.word || query)} className={`flex h-14 items-center justify-center gap-2 rounded-2xl font-black shadow-sm ${stats.learnedIds.includes(searchResult.word || query) ? 'bg-green-500 text-white' : 'bg-primary text-white'}`}><CheckCircle2 className="h-5 w-5" />{stats.learnedIds.includes(searchResult.word || query) ? "学習済み（解除）" : "この単語を覚えた！"}</button>
                   </div>
                 ) : null}
               </div>
@@ -178,9 +113,9 @@ export default function Page() {
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <div className="flex flex-col items-center justify-center rounded-3xl bg-card p-4 shadow-sm border border-primary/5"><Flame className="h-6 w-6 text-orange-500 mb-1" /><span className="text-xl font-black">{stats.streak}</span><span className="text-[10px] font-bold text-muted-foreground uppercase">連続日数</span></div>
-            <div className="flex flex-col items-center justify-center rounded-3xl bg-primary/10 p-4 shadow-sm border border-primary/10"><BookOpen className="h-6 w-6 text-primary mb-1" /><span className="text-xl font-black text-primary">{stats.learnedCount}</span><span className="text-[10px] font-bold text-primary uppercase">学習済み</span></div>
-            <div className="flex flex-col items-center justify-center rounded-3xl bg-card p-4 shadow-sm border border-primary/5"><Trophy className="h-6 w-6 text-yellow-500 mb-1" /><span className="text-xl font-black">Lv.{level}</span><span className="text-[10px] font-bold text-muted-foreground uppercase">レベル</span></div>
+            <div className="flex flex-col items-center justify-center rounded-3xl bg-card p-4 shadow-sm border border-primary/5"><Flame className="h-6 w-6 text-orange-500 mb-1" /><span className="text-xl font-black">{stats.streak}</span><span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center">連続日数</span></div>
+            <div className="flex flex-col items-center justify-center rounded-3xl bg-primary/10 p-4 shadow-sm border border-primary/10"><BookOpen className="h-6 w-6 text-primary mb-1" /><span className="text-xl font-black text-primary">{stats.learnedCount}</span><span className="text-[10px] font-bold text-primary uppercase tracking-widest text-center">学習済み</span></div>
+            <div className="flex flex-col items-center justify-center rounded-3xl bg-card p-4 shadow-sm border border-primary/5"><Trophy className="h-6 w-6 text-yellow-500 mb-1" /><span className="text-xl font-black">Lv.{level}</span><span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center">レベル</span></div>
           </div>
 
           <div className="flex flex-col gap-3">
@@ -193,22 +128,22 @@ export default function Page() {
             <div className="flex flex-col gap-2">{weekPhrases.map((phrase) => <PhraseItem key={phrase.id} phrase={phrase} />)}</div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <button onClick={() => { setShowLearnedList(!showLearnedList); setShowLibrary(false); }} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-green-200 bg-green-50/30 font-black text-green-600 active:scale-95"><History className="h-5 w-5" />{showLearnedList ? "閉じる" : `学習済みリスト (${stats.learnedCount})`}</button>
-            <button onClick={() => { setShowLibrary(!showLibrary); setShowLearnedList(false); }} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-primary/20 bg-card font-black text-primary active:scale-95"><BookOpen className="h-5 w-5" />{showLibrary ? "閉じる" : "ライブラリを見る"}</button>
+          <div className="flex flex-col gap-2 px-2">
+            <button onClick={() => { setShowLearnedList(!showLearnedList); setShowLibrary(false); }} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-green-200 bg-green-50/30 font-black text-green-600 transition-all"><History className="h-5 w-5" />{showLearnedList ? "閉じる" : `学習済みリスト (${stats.learnedCount})`}</button>
+            <button onClick={() => { setShowLibrary(!showLibrary); setShowLearnedList(false); }} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-primary/20 bg-card font-black text-primary transition-all"><BookOpen className="h-5 w-5" />{showLibrary ? "閉じる" : "ライブラリを見る"}</button>
           </div>
 
           {showLearnedList && (
             <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-col gap-4 pt-4">
-              <h3 className="px-2 text-xs font-black uppercase text-green-600 tracking-widest">覚えた言葉</h3>
-              <div className="flex flex-col gap-2">
+              <h3 className="px-2 text-xs font-black uppercase text-green-600 tracking-widest px-2">覚えた言葉</h3>
+              <div className="flex flex-col gap-2 px-2">
                 {[...learnedPhrases, ...otherLearned.map(id => ({id, english: id, japanese: "検索から追加", pronunciation: "", phonetic: "", example: "", tip: ""}))].map((item: any) => <PhraseItem key={item.id} phrase={item} />)}
               </div>
             </div>
           )}
 
           {showLibrary && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-col gap-4 pt-4">
+            <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-col gap-4 pt-4 px-2">
               <h3 className="px-2 text-xs font-black uppercase text-muted-foreground tracking-widest">ライブラリ</h3>
               <div className="flex flex-col gap-2">{allPhrases.map((phrase) => <PhraseItem key={phrase.id} phrase={phrase} />)}</div>
             </div>

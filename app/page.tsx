@@ -57,12 +57,15 @@ export default function Page() {
     })
   }
 
-  // 音声読み上げの補正
+  // 音声読み上げの補正ロジック
   const playAudio = (text: string) => {
-    // 1. 小文字にする（LETS GOOOO をレッツゴーと読ませるため）
     let speechText = text.toLowerCase();
 
-    // 2. 特殊な読み上げ辞書
+    // LETS GOOOO が「レッツグー」にならないよう、読み上げ用のみ末尾のOを減らす
+    if (speechText.includes("lets goooo")) {
+      speechText = "lets gooo"; 
+    }
+
     const dictionary: { [key: string]: string } = {
       "copium": "cope-e-um",
       "lmao": "l m a o",
@@ -75,7 +78,8 @@ export default function Page() {
 
     const u = new SpeechSynthesisUtterance(speechText);
     u.lang = 'en-US';
-    u.rate = 0.85; // 少しゆっくり
+    u.pitch = 1.1; // 音の高さを少し上げると「ゴー」が明瞭になりやすい
+    u.rate = 0.85; 
     window.speechSynthesis.speak(u);
   }
 

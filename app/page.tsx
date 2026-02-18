@@ -59,12 +59,29 @@ export default function Page() {
     })
   }
 
-  const playAudio = (text: string) => {
-    const u = new SpeechSynthesisUtterance(text)
-    u.lang = 'en-US'
-    window.speechSynthesis.speak(u)
-  }
+const playAudio = (text: string) => {
+    // 1. すべて小文字に変換（大文字だと一文字ずつ読まれるため）
+    let speechText = text.toLowerCase();
 
+    // 2. 特殊な読み方の補正（必要に応じて増やせます）
+    const dictionary: { [key: string]: string } = {
+      "pog": "pog",
+      "poggers": "poggers",
+      "lmao": "l m a o", // これは逆に一文字ずつのほうが自然
+      "ikr": "i k r",
+      "copium": "cope-e-um", // コピウムっぽく聞こえるように調整
+      "o7": "salute", // 敬礼なのでsaluteと読ませる
+      "fr fr": "for real for real",
+    };
+
+    // 辞書にあれば置換、なければそのまま
+    speechText = dictionary[speechText] || speechText;
+
+    const u = new SpeechSynthesisUtterance(speechText);
+    u.lang = 'en-US';
+    u.rate = 0.9; // 少しゆっくりにすると聞き取りやすいです
+    window.speechSynthesis.speak(u);
+  };
   const handleSearch = async () => {
     if (!query.trim()) return
     setIsLoading(true)

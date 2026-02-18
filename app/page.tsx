@@ -57,27 +57,25 @@ export default function Page() {
     })
   }
 
-  // 音声読み上げの補正ロジック
+  // 音声読み上げの補正
   const playAudio = (text: string) => {
-    // 1. 小文字にする（大文字の羅列を一文字ずつ読むのを防ぐ）
+    // 1. 小文字にする（LETS GOOOO をレッツゴーと読ませるため）
     let speechText = text.toLowerCase();
 
-    // 2. 特殊な読み上げ辞書（必要に応じて調整）
+    // 2. 特殊な読み上げ辞書
     const dictionary: { [key: string]: string } = {
       "copium": "cope-e-um",
       "lmao": "l m a o",
       "ikr": "i k r",
-      "o7": "salute",
       "tldr": "t l d r",
       "fr fr": "for real for real",
     };
 
-    // スラングのIDや英語テキストがキーにあれば置換
     speechText = dictionary[speechText] || speechText;
 
     const u = new SpeechSynthesisUtterance(speechText);
     u.lang = 'en-US';
-    u.rate = 0.9; // 聴き取りやすく少しゆっくり
+    u.rate = 0.85; // 少しゆっくり
     window.speechSynthesis.speak(u);
   }
 

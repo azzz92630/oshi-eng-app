@@ -1,88 +1,66 @@
 "use client"
 
 import React, { useState } from "react"
-import { Volume2, ChevronDown, ChevronUp, Sparkles } from "lucide-react"
+import { Sparkles, Volume2, ChevronDown, ChevronUp } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import type { Phrase } from "@/lib/phrases"
+import { getCategoryColor } from "@/lib/phrases"
 
 interface TodayCardProps {
   phrase: Phrase
 }
 
 export function TodayCard({ phrase }: TodayCardProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
 
-  const playAudio = () => {
-    const u = new SpeechSynthesisUtterance(phrase.english)
-    u.lang = "en-US"
-    window.speechSynthesis.speak(u)
+  const playAudio = (text: string) => {
+    let speechText = text.toLowerCase();
+    if (speechText.includes("lets goooo")) speechText = "lets gooo";
+    const u = new SpeechSynthesisUtterance(speechText);
+    u.lang = 'en-US';
+    u.rate = 0.85;
+    window.speechSynthesis.speak(u);
   }
 
   return (
-    <div className="mx-4 overflow-hidden rounded-3xl border border-primary/10 bg-white shadow-sm">
+    <div className="mx-4 overflow-hidden rounded-3xl border border-primary/10 bg-card shadow-lg transition-all hover:shadow-xl">
       <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 items-center rounded-full bg-primary/10 px-3 py-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-primary">
-                本日のフレーズ
-              </span>
-            </div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+            <span className="rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase text-primary">本日のフレーズ</span>
+            <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase text-white ${getCategoryColor(phrase.category)}`}>
               {phrase.category}
             </span>
           </div>
-          <Sparkles className="h-4 w-4 text-primary/20" />
+          <Sparkles className="h-5 w-5 text-primary/30" />
         </div>
 
-        <div className="mb-6">
-          <h2 className="text-3xl font-black text-foreground mb-2">
-            {phrase.english}
-          </h2>
-          <p className="text-lg font-bold text-primary">
-            {phrase.japanese}
-          </p>
+        <div className="mb-8">
+          <h2 className="text-4xl font-black tracking-tight text-primary">{phrase.english}</h2>
+          <p className="mt-2 text-xl font-bold text-muted-foreground">{phrase.japanese}</p>
         </div>
 
-        <div className="flex items-center gap-4">
-          <button
-            onClick={playAudio}
-            className="flex items-center gap-2 rounded-full border border-primary/20 px-4 py-2 text-sm font-bold text-primary transition-all active:scale-95 hover:bg-primary/5"
-          >
-            <Volume2 className="h-4 w-4" />
-            発音を聞く
-          </button>
-          
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-primary transition-colors"
-          >
-            {isOpen ? (
-              <>閉じる <ChevronUp className="h-4 w-4" /></>
-            ) : (
-              <>例文・ヒント <ChevronDown className="h-4 w-4" /></>
-            )}
-          </button>
+        <div className="flex items-center gap-3">
+          <Button onClick={() => playAudio(phrase.english)} variant="outline" className="h-12 flex-1 rounded-2xl border-2 font-bold hover:bg-primary/5">
+            <Volume2 className="mr-2 h-5 w-5" /> 発音を聞く
+          </Button>
+          <Button onClick={() => setIsExpanded(!isExpanded)} variant="ghost" className="h-12 flex-1 rounded-2xl font-bold text-muted-foreground">
+            {isExpanded ? "閉じる" : "詳細を見る"} {isExpanded ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />}
+          </Button>
         </div>
 
-        {isOpen && (
-          <div className="mt-6 space-y-4 border-t border-dashed pt-6 animate-in fade-in slide-in-from-top-2">
+        {isExpanded && (
+          <div className="mt-8 space-y-6 border-t border-dashed pt-8 animate-in fade-in slide-in-from-top-4">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">Example</p>
+              <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-primary">Example</p>
               <div className="rounded-2xl bg-primary/5 p-4">
-                <p className="text-sm font-bold leading-relaxed text-foreground">
-                  {/* API検索と同じ形式、または既存のデータに合わせて表示 */}
-                  {phrase.english === "No cap" ? "I'm the best player, no cap!" : "That was a huge play, POG!"}
-                </p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {phrase.english === "No cap" ? "俺が最強、マジでな。" : "今のプレイまじですごかった、最高！"}
-                </p>
+                <p className="text-lg font-bold leading-relaxed">{phrase.example}</p>
+                <p className="mt-2 text-sm font-medium text-muted-foreground">{phrase.exampleJa}</p>
               </div>
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">Tip</p>
-              <p className="text-xs font-medium leading-relaxed text-muted-foreground px-1">
-                Vtuberの配信では、嘘をついていないことを強調する時や、相手を褒める時に語尾によく付け加えられます。
-              </p>
+              <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-orange-500">Tip</p>
+              <p className="text-sm font-medium leading-relaxed text-muted-foreground">{phrase.tip}</p>
             </div>
           </div>
         )}

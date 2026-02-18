@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
     */
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
     const prompt = `あなたはVtuberリスナー向けの英語学習エキスパートです。
 海外の配信チャットやSNSで今まさに流行っている、あるいは頻出する英単語やスラングを1つ選んでください。

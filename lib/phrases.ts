@@ -41,7 +41,7 @@ export const phrases: Phrase[] = [
   { id: 'raid-022', english: 'Raid', japanese: 'レイド', pronunciation: 'レイド', phonetic: '/reɪd/', category: 'stream' },
   { id: 'hype-023', english: 'Hype', japanese: '盛り上がってる！', pronunciation: 'ハイプ', phonetic: '/haɪp/', category: 'stream' },
   { id: 'clueless-024', english: 'Clueless', japanese: 'わかってないｗ', pronunciation: 'クルーレス', phonetic: '/ˈkluː.ləs/', category: 'slang' },
-  { id: 'skill-issue-025', english: 'Skill issue', japanese: '実力不足だなｗ', pronunciation: 'スキル・イシュー', phonetic: '/skɪl ˈɪʃ.uː/', category: 'slang' },
+  { id: 'skill-issue-025', english: 'Skill issue', pronunciation: 'スキル・イシュー', japanese: '実力不足だなｗ', phonetic: '/skɪl ˈɪʃ.uː/', category: 'slang' },
 
   // その他
   { id: 'malding-026', english: 'Malding', japanese: 'ブチギレてる', pronunciation: 'モールディング', phonetic: '/ˈmɔːldɪŋ/', category: 'slang' },

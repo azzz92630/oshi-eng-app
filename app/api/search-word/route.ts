@@ -13,9 +13,9 @@ export async function POST(request: NextRequest) {
     const { word } = await request.json()
     if (!word) return NextResponse.json({ error: "NO_WORD", details: "単語が入力されていません。" }, { status: 400 })
     
+    // 特定の環境で動作するモデル名を指定
     const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" })
 
-    // 日本語・英語の両方に対応させるプロンプト
     const prompt = `あなたは、日本のVtuberファン（リスナー）向けに、推し活で使える英語を教える専門家です。
 以下の入力内容について、適切な「英単語」を1つ選定し、その情報をJSONで返してください。
 
@@ -26,18 +26,20 @@ export async function POST(request: NextRequest) {
 2. 入力が「英語」の場合：その単語の解説を行ってください。
 
 【出力ルール】
-1. 発音: 略語は一文字ずつ（例：エルエムエーオー）。
-2. 例文: 例文は、日本のVtuberが配信で実際に使いそうな自然な英語・日本語訳にしてください。
+1. pronunciation: カタカナでの読み方。略語は一文字ずつ（例：エル・エム・エー・オー）。
+2. phonetic: 発音記号を / / で囲んで記載してください。
+3. vtuberExample: 日本のVtuberや海外リスナーが配信で実際に使いそうな自然な英語例文。
+4. tip: その単語のニュアンスや、チャット欄で使う際の具体的なコツや背景を1文で。
 
-必ず以下のJSON形式のみで返してください：
+必ず以下のJSON形式のみで返してください。余計な解説文は含めないでください：
 {
-  "word": "選定された英単語",
-  "meaning": "その単語の意味（日本語）",
+  "word": "選定された英単語（大文字）",
+  "meaning": "日本語での意味",
   "pronunciation": "カタカナ発音",
-  "vtuberExample": "Vtuberが使いそうな英語例文",
-  "vtuberExampleJa": "その例文の自然な和訳",
-  "dailyExample": "一般的な日常会話での英語例文",
-  "dailyExampleJa": "その例文の和訳"
+  "phonetic": "発音記号",
+  "vtuberExample": "英語例文",
+  "vtuberExampleJa": "例文の和訳",
+  "tip": "使い方のコツ・背景"
 }`
 
     const result = await model.generateContent(prompt)

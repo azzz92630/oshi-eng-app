@@ -147,8 +147,26 @@ export default function Page() {
   }
 
   const learnedPhrases = allPhrases.filter(p => stats.learnedIds.includes(p.id))
-  const otherLearned = stats.learnedIds.filter(id => !allPhrases.find(p => p.id === id))
-
+// page.tsx の learnedPhrases を作成するあたりのロジックを修正
+const otherLearned = stats.learnedIds
+  .filter(id => !allPhrases.find(p => p.id === id))
+  .map(id => {
+    // もし検索結果がステートにあれば、その詳細を使う
+    if (searchResult && (searchResult.word === id || query === id)) {
+      return {
+        id: id,
+        english: searchResult.word || id,
+        japanese: searchResult.meaning,
+        pronunciation: searchResult.pronunciation,
+        phonetic: searchResult.phonetic,
+        example: searchResult.vtuberExample,
+        exampleJa: searchResult.vtuberExampleJa,
+        tip: searchResult.tip,
+      };
+    }
+    return { id: id, english: id, japanese: "検索から追加", pronunciation: "", phonetic: "", example: "", tip: "" };
+  });
+  
   const PhraseItem = ({ phrase }: { phrase: any }) => {
     const isExpanded = expandedId === phrase.id;
     return (

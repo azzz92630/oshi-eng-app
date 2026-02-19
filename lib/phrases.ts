@@ -58,8 +58,12 @@ export const getCategoryColor = (category: string) => {
 
 export const getTodayPhrase = () => {
   if (typeof window === 'undefined') return phrases[0];
-  const today = new Date().toLocaleDateString();
-  const seed = today.split('/').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  
+  const d = new Date();
+  // 年月日を単純な数字の羅列（例: 20260219）にする
+  const dateString = `${d.getFullYear()}${d.getMonth() + 1}${d.getDate()}`;
+  const seed = parseInt(dateString, 10);
+  
   return phrases[seed % phrases.length];
 };
 

@@ -41,7 +41,9 @@ export default function Page() {
   useEffect(() => {
     const saved = localStorage.getItem("oshienglish-stats")
     const lastOpenDate = localStorage.getItem("oshienglish-last-date")
-    const today = new Date().toLocaleDateString()
+    const now = new Date();
+    const adjustedDate = new Date(now.getTime() - (7 * 60 * 60 * 1000));
+    const today = adjustedDate.toLocaleDateString();
 
     let currentStats = { streak: 1, learnedCount: 0, learnedIds: [] as string[] }
 
